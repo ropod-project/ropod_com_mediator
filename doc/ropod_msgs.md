@@ -34,7 +34,7 @@ Full message example:
       },
       { 
         "command": "GOTO",
-        "location": "MOBIDICK"
+        "location": "MOBIDIK"
       }
     ]
   }
@@ -62,7 +62,7 @@ Full message example:
 }
 ```
 
-## MOBIDICK
+## MOBIDIK
 
 ```
 {
@@ -76,7 +76,7 @@ Full message example:
     "commandList": [
       { 
         "command": "GOTO",
-        "location": "MOBIDICK"
+        "location": "MOBIDIK"
       }
     ]
   }
