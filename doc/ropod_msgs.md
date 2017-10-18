@@ -10,7 +10,6 @@ ROPOD Messages for Demo 1
  - msg_id: choice = UUID; unique ID for traceability (required); 
 - payload: JSON subpart (required) 
  - with required "metamodel" tag
-  
 
 # Waypoint Messages
 

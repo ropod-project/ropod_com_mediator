@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.6)
-project (ropod-communication-mediator)
+project(ropod-com-mediator)
 
-set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/ropod-com-mediator/cmake")
 
 set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/bin)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
@@ -9,6 +9,30 @@ set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 
 set(INSTALL_DIR /usr/lib CACHE PATH "Installation directory for mediator")
 
+
+########################################################################
+# ROS dependency
+########################################################################
+find_package(catkin REQUIRED COMPONENTS message_generation std_msgs geometry_msgs)
+
+add_message_files(
+   FILES
+   ropod_control_primitive.msg
+   sem_waypoint_cmd.msg
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs  # Or other packages containing msgs
+  geometry_msgs
+)
+
+catkin_package(
+#   INCLUDE_DIRS include
+   LIBRARIES ${PROJECT_NAME}
+   CATKIN_DEPENDS roscpp
+   DEPENDS message_runtime
+)
 
 ########################################################################
 # LIBZMQ dependency
@@ -55,6 +79,6 @@ ENDIF (ZYRE_FOUND)
 #set(HEADER_FILES ${PROJECT_SOURCE_DIR}/include/mediator.h)
 
 
-add_executable(ropod_comm_mediator_test ${PROJECT_SOURCE_DIR}/src/test.c ${HEADER_FILES})
+add_executable(ropod_comm_mediator_test ${PROJECT_SOURCE_DIR}/src/test.cpp ${HEADER_FILES})
 target_link_libraries(ropod_comm_mediator_test ${LIBS})
 
