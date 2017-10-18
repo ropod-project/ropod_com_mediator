@@ -3,6 +3,12 @@ Zyre
 
 Follow instructions for **master** branches: https://github.com/zeromq/zyre
 
+At the moment of writing (Oct, 2017), those correspond to:
+* libsodium 1.0.15
+* libzmq 4.2.2
+* czmq 4.0.2
+* zyre 2.0.0
+
 ```
     git clone --depth 1 -b stable https://github.com/jedisct1/libsodium.git
     cd libsodium
@@ -42,5 +48,3 @@ JSONCPP
 ```
   apt-get install libjsoncpp-dev
 ```
-
-
