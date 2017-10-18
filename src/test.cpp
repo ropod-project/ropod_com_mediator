@@ -25,6 +25,7 @@
 
 #include "zyre.h"
 #include <json/json.h>
+#include <iostream>
 
 //  This actor will listen and publish anything received
 //  on the CHAT group
@@ -84,7 +85,57 @@ chat_actor (zsock_t *pipe, void *args)
 
             	/* Parse JSON here */
             	Json::Value msg;
+            	Json::Reader reader;
+            	bool parsingSuccessful = reader.parse(message, msg);     //parse process
+            	if (parsingSuccessful) {
+            		std::cout  << "[DEBUG]   type = "  << msg["header"]["type"].asString() << std::endl;
+//            		if(!msg.isMember("header")) {
+//            			std::cout  << "[WARNING] No header specified." << std::endl;
+//            		} else {
+//            			std::cout  << "[DEBUG]   Header found." << std::endl;
+//            		}
+            		std::string type = msg["header"]["type"].asString();
+            		if(type.compare("CMD") == 0) {
+            			std::cout  << "[INFO]    Received a command." << std::endl;
 
+            			Json::Value payload = msg["payload"];
+            			if(!payload){
+            				std::cout  << "[WARNING] No payload specified." << std::endl;
+            			} else {
+            				std::cout  << "[DEBUG]   Payload found." << std::endl;
+            				Json::Value commandList = payload["commandList"];
+
+            			    for (int i = 0; i < commandList.size(); i++){
+            			    	std::cout << " command: " << commandList[i]["command"].asString();
+            			    	std::cout << " location: " << commandList[i]["location"].asString();
+            			    	std::cout << std::endl;
+
+            			    	if(commandList[i]["command"].asString().compare("GOTO") == 0) {
+            			    		std::string location = commandList[i]["location"].asString();
+            			    		std::cout  << "[INFO]    Received a GOTO location = " << location << " command." << std::endl;
+
+            			    	} else if(commandList[i]["command"].asString().compare("ENTER_ELEVATOR") == 0) {
+            			    		std::cout  << "[INFO]    Received a ENTER_ELEVATOR  command." << std::endl;
+
+            			    	} else if(commandList[i]["command"].asString().compare("EXIT_ELEVATOR") == 0) {
+            			    		std::cout  << "[INFO]    Received a EXIT_ELEVATOR  command." << std::endl;
+
+            			    	} else if(commandList[i]["command"].asString().compare("PAUSE") == 0) {
+            			    		std::cout  << "[INFO]    Received a PAUSE  command." << std::endl;
+
+            			    	} else if(commandList[i]["command"].asString().compare("RESUME") == 0) {
+            			    		std::cout  << "[INFO]    Received a RESUME  command." << std::endl;
+
+            			    	}
+
+            			    }
+            			}
+
+            		}
+
+            	} else {
+            		std::cout  << "Failed to parse" << reader.getFormattedErrorMessages();
+            	}
 
             } else if (streq (event, "EVASIVE"))  {
                 printf ("%s is being evasive\n", name);
