@@ -24,7 +24,7 @@
 
 
 #include "zyre.h"
-#include <json/json.h>
+#include <jsoncpp/json/json.h>
 
 //  This actor will listen and publish anything received
 //  on the CHAT group
