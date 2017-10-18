@@ -44,8 +44,20 @@ ELSE (ZYRE_FOUND)
 ENDIF (ZYRE_FOUND)
 
 ########################################################################
-# Jansson dependency
+# JSON dependency
 ########################################################################
+
+#pkg_check_modules(JSONCPP jsoncpp)
+#target_link_libraries(${JSONCPP_LIBRARIES})
+#include_directories(${JSONCPP_INCLUDE_DIRS})
+
+find_package(jsoncpp REQUIRED)
+IF (JSONCPP_FOUND)
+    include_directories(${JSONCPP_INCLUDE_DIRS})
+    list(APPEND LIBS ${JSONCPP_LIBRARIES})
+ELSE (JSONCPP_FOUND)
+    message( FATAL_ERROR "JSONCPP not found." )
+ENDIF (JSONCPP_FOUND)
 
 
 ########################################################################
@@ -55,6 +67,9 @@ ENDIF (ZYRE_FOUND)
 #set(HEADER_FILES ${PROJECT_SOURCE_DIR}/include/mediator.h)
 
 
-add_executable(ropod_comm_mediator_test ${PROJECT_SOURCE_DIR}/src/test.c ${HEADER_FILES})
+add_executable(ropod_comm_mediator_test ${PROJECT_SOURCE_DIR}/src/test.cpp ${HEADER_FILES})
 target_link_libraries(ropod_comm_mediator_test ${LIBS})
+
+#add_executable(ropod_comm_mediator ${PROJECT_SOURCE_DIR}/src/ropod_comm_mediator.c ${HEADER_FILES})
+#target_link_libraries(ropod_comm_mediator ${LIBS} jansson)
 
