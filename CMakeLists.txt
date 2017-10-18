@@ -15,17 +15,17 @@ set(INSTALL_DIR /usr/lib CACHE PATH "Installation directory for mediator")
 ########################################################################
 find_package(catkin REQUIRED COMPONENTS roscpp message_generation ropod_ros_msgs)
 
-generate_messages(
-  DEPENDENCIES
-  ropod_ros_msgs
-)
+#generate_messages(
+#  DEPENDENCIES
+#  ropod_ros_msgs
+#)
 
-catkin_package(
-#   INCLUDE_DIRS include
-   LIBRARIES ${PROJECT_NAME}
-   CATKIN_DEPENDS roscpp ropod_ros_msgs
-   DEPENDS message_runtime
-)
+#catkin_package(
+##   INCLUDE_DIRS include
+#   LIBRARIES ${PROJECT_NAME}
+#   CATKIN_DEPENDS roscpp ropod_ros_msgs
+#   DEPENDS message_runtime
+#)
 
 catkin_package(
   CATKIN_DEPENDS roscpp 

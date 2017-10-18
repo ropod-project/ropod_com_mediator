@@ -3,11 +3,14 @@
 
 /* ROS includes */
 #include <ros/ros.h>
+#include <std_msgs/String.h>
 
 /* Zyre + JONS includes */
 #include "zyre.h"
 #include <jsoncpp/json/json.h>
 #include <iostream>
+
+ros::Publisher zyreToRosPuplisher;
 
 static void
 chat_actor (zsock_t *pipe, void *args)
@@ -67,12 +70,15 @@ chat_actor (zsock_t *pipe, void *args)
             	Json::Reader reader;
             	bool parsingSuccessful = reader.parse(message, msg);     //parse process
             	if (parsingSuccessful) {
+
+            		/* Debug topic */
+            		Json::FastWriter fast;
+		    		std_msgs::String rosMsg;
+		    		rosMsg.data = fast.write(msg);
+		    		zyreToRosPuplisher.publish(rosMsg);
+
+
             		std::cout  << "[DEBUG]   type = "  << msg["header"]["type"].asString() << std::endl;
-//            		if(!msg.isMember("header")) {
-//            			std::cout  << "[WARNING] No header specified." << std::endl;
-//            		} else {
-//            			std::cout  << "[DEBUG]   Header found." << std::endl;
-//            		}
             		std::string type = msg["header"]["type"].asString();
             		if(type.compare("CMD") == 0) {
             			std::cout  << "[INFO]    Received a command." << std::endl;
@@ -92,6 +98,10 @@ chat_actor (zsock_t *pipe, void *args)
             			    	if(commandList[i]["command"].asString().compare("GOTO") == 0) {
             			    		std::string location = commandList[i]["location"].asString();
             			    		std::cout  << "[INFO]    Received a GOTO location = " << location << " command." << std::endl;
+
+            			    		std_msgs::String rosMsg;
+            			    		rosMsg.data = "GOTO";
+            			    		zyreToRosPuplisher.publish(rosMsg);
 
             			    	} else if(commandList[i]["command"].asString().compare("ENTER_ELEVATOR") == 0) {
             			    		std::cout  << "[INFO]    Received a ENTER_ELEVATOR  command." << std::endl;
@@ -147,6 +157,13 @@ int main(int argc, char **argv)
 	/* Initialize ROS framework */
 	ros::init(argc, argv, nodeName);
 	ros::NodeHandle node;
+
+
+	/// Publisher used for the updates
+//	ros::Publisher zyreToRosPuplisher;
+	zyreToRosPuplisher = node.advertise<std_msgs::String>("ropod_commands", 100);
+	std_msgs::String rosMsg;
+	zyreToRosPuplisher.publish(rosMsg);
 
 	/* parameters */
 
