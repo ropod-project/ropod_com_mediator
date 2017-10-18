@@ -24,6 +24,7 @@
 
 
 #include "zyre.h"
+#include <json/json.h>
 
 //  This actor will listen and publish anything received
 //  on the CHAT group
@@ -78,11 +79,16 @@ chat_actor (zsock_t *pipe, void *args)
             if (streq (event, "EXIT"))
                 printf ("%s has left the chat\n", name);
             else
-            if (streq (event, "SHOUT"))
+            if (streq (event, "SHOUT")) {
                 printf ("%s: %s\n", name, message);
-            else
-            if (streq (event, "EVASIVE"))
+
+            	/* Parse JSON here */
+            	Json::Value msg;
+
+
+            } else if (streq (event, "EVASIVE"))  {
                 printf ("%s is being evasive\n", name);
+        	}
 
             free (event);
             free (peer);
