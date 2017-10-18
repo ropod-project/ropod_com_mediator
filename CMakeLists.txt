@@ -13,7 +13,7 @@ set(INSTALL_DIR /usr/lib CACHE PATH "Installation directory for mediator")
 ########################################################################
 # ROS dependency
 ########################################################################
-find_package(catkin REQUIRED COMPONENTS message_generation ropod_ros_msgs)
+find_package(catkin REQUIRED COMPONENTS roscpp message_generation ropod_ros_msgs)
 
 generate_messages(
   DEPENDENCIES
@@ -25,6 +25,10 @@ catkin_package(
    LIBRARIES ${PROJECT_NAME}
    CATKIN_DEPENDS roscpp ropod_ros_msgs
    DEPENDS message_runtime
+)
+
+catkin_package(
+  CATKIN_DEPENDS roscpp 
 )
 
 ########################################################################
@@ -84,9 +88,9 @@ ENDIF (JSONCPP_FOUND)
 #set(HEADER_FILES ${PROJECT_SOURCE_DIR}/include/mediator.h)
 
 
-add_executable(ropod_comm_mediator_test ${PROJECT_SOURCE_DIR}/src/test.cpp ${HEADER_FILES})
-target_link_libraries(ropod_comm_mediator_test ${LIBS})
+#add_executable(ropod_comm_mediator_test ${PROJECT_SOURCE_DIR}/src/test.cpp ${HEADER_FILES})
+#target_link_libraries(ropod_comm_mediator_test ${LIBS})
 
-#add_executable(ropod_comm_mediator ${PROJECT_SOURCE_DIR}/src/ropod_comm_mediator.c ${HEADER_FILES})
-#target_link_libraries(ropod_comm_mediator ${LIBS} jansson)
+add_executable(ropod_com_mediator ${PROJECT_SOURCE_DIR}/src/node.cpp ${HEADER_FILES})
+target_link_libraries(ropod_com_mediator ${LIBS}  ${catkin_LIBRARIES})
 
