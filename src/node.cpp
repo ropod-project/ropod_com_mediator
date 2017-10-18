@@ -10,6 +10,9 @@
 #include <jsoncpp/json/json.h>
 #include <iostream>
 
+/* ROPOD ROS messages */
+#include <ropod_ros_msgs/sem_waypoint_cmd.h>
+
 ros::Publisher zyreToRosPuplisher;
 
 static void
