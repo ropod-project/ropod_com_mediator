@@ -14,6 +14,7 @@
 #include <ropod_ros_msgs/sem_waypoint_cmd.h>
 
 ros::Publisher zyreToRosPuplisher;
+ros::Publisher zyreToRosCommandsPuplisher;
 
 static void
 chat_actor (zsock_t *pipe, void *args)
@@ -102,9 +103,10 @@ chat_actor (zsock_t *pipe, void *args)
             			    		std::string location = commandList[i]["location"].asString();
             			    		std::cout  << "[INFO]    Received a GOTO location = " << location << " command." << std::endl;
 
-            			    		std_msgs::String rosMsg;
-            			    		rosMsg.data = "GOTO";
-            			    		zyreToRosPuplisher.publish(rosMsg);
+            			    		ropod_ros_msgs::sem_waypoint_cmd cmdMsg;
+            			    		//cmdMsg.
+
+            			    		zyreToRosCommandsPuplisher.publish(cmdMsg);
 
             			    	} else if(commandList[i]["command"].asString().compare("ENTER_ELEVATOR") == 0) {
             			    		std::cout  << "[INFO]    Received a ENTER_ELEVATOR  command." << std::endl;
@@ -164,7 +166,8 @@ int main(int argc, char **argv)
 
 	/// Publisher used for the updates
 //	ros::Publisher zyreToRosPuplisher;
-	zyreToRosPuplisher = node.advertise<std_msgs::String>("ropod_commands", 100);
+	zyreToRosPuplisher = node.advertise<std_msgs::String>("ropod_zyre_debug", 100);
+	zyreToRosCommandsPuplisher = node.advertise<ropod_ros_msgs::sem_waypoint_cmd>("ropod_commands", 100);
 	std_msgs::String rosMsg;
 	zyreToRosPuplisher.publish(rosMsg);
 
