@@ -13,26 +13,19 @@ set(INSTALL_DIR /usr/lib CACHE PATH "Installation directory for mediator")
 ########################################################################
 # ROS dependency
 ########################################################################
-find_package(catkin REQUIRED COMPONENTS roscpp message_generation std_msgs geometry_msgs)
+find_package(catkin REQUIRED COMPONENTS roscpp message_generation ropod_ros_msgs)
 
-#add_message_files(
-#   FILES
-#   ropod_control_primitive.msg
-#   sem_waypoint_cmd.msg
-#)
-#
-#generate_messages(
-#  DEPENDENCIES
-#  std_msgs  # Or other packages containing msgs
-#  geometry_msgs
-#)
-#
-#catkin_package(
-##   INCLUDE_DIRS include
-#   LIBRARIES ${PROJECT_NAME}
-#   CATKIN_DEPENDS roscpp
-#   DEPENDS message_runtime
-#)
+generate_messages(
+  DEPENDENCIES
+  ropod_ros_msgs
+)
+
+catkin_package(
+#   INCLUDE_DIRS include
+   LIBRARIES ${PROJECT_NAME}
+   CATKIN_DEPENDS roscpp ropod_ros_msgs
+   DEPENDS message_runtime
+)
 
 catkin_package(
   CATKIN_DEPENDS roscpp 
