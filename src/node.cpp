@@ -11,7 +11,7 @@
 #include <iostream>
 
 /* ROPOD ROS messages */
-#include <ropod_ros_msgs/sem_waypoint_cmd.h>
+#include <ropod_ros_msgs/ropod_sem_waypoint_list.h>
 
 ros::Publisher zyreToRosPuplisher;
 ros::Publisher zyreToRosCommandsPuplisher;
@@ -94,19 +94,28 @@ chat_actor (zsock_t *pipe, void *args)
             				std::cout  << "[DEBUG]   Payload found." << std::endl;
             				Json::Value commandList = payload["commandList"];
 
+
+            				ropod_ros_msgs::ropod_sem_waypoint_list wayPointList;
+
             			    for (int i = 0; i < commandList.size(); i++){
             			    	std::cout << " command: " << commandList[i]["command"].asString();
             			    	std::cout << " location: " << commandList[i]["location"].asString();
             			    	std::cout << std::endl;
 
+            			    	ropod_ros_msgs::ropod_sem_waypoint wayPoint;
+            			    	wayPoint.command = commandList[i]["command"].asString();
+            			    	wayPoint.location = commandList[i]["location"].asString();
+            			    	wayPointList.sem_waypoint.push_back(wayPoint);
+
+
             			    	if(commandList[i]["command"].asString().compare("GOTO") == 0) {
             			    		std::string location = commandList[i]["location"].asString();
             			    		std::cout  << "[INFO]    Received a GOTO location = " << location << " command." << std::endl;
 
-            			    		ropod_ros_msgs::sem_waypoint_cmd cmdMsg;
+            			    		//ropod_ros_msgs::ropod_sem_waypoint_list cmdMsg;
             			    		//cmdMsg.
 
-            			    		zyreToRosCommandsPuplisher.publish(cmdMsg);
+            			    		//zyreToRosCommandsPuplisher.publish(cmdMsg);
 
             			    	} else if(commandList[i]["command"].asString().compare("ENTER_ELEVATOR") == 0) {
             			    		std::cout  << "[INFO]    Received a ENTER_ELEVATOR  command." << std::endl;
@@ -123,6 +132,8 @@ chat_actor (zsock_t *pipe, void *args)
             			    	}
 
             			    }
+
+            			    zyreToRosCommandsPuplisher.publish(wayPointList);
             			}
 
             		}
@@ -167,7 +178,7 @@ int main(int argc, char **argv)
 	/// Publisher used for the updates
 //	ros::Publisher zyreToRosPuplisher;
 	zyreToRosPuplisher = node.advertise<std_msgs::String>("ropod_zyre_debug", 100);
-	zyreToRosCommandsPuplisher = node.advertise<ropod_ros_msgs::sem_waypoint_cmd>("ropod_commands", 100);
+	zyreToRosCommandsPuplisher = node.advertise<ropod_ros_msgs::ropod_sem_waypoint_list>("ropod_commands", 100);
 	std_msgs::String rosMsg;
 	zyreToRosPuplisher.publish(rosMsg);
 
