@@ -51,9 +51,34 @@ void groundSemanticWaypoints(const ropod_ros_msgs::ropod_sem_waypoint sem_pt, ro
 			ROS_WARN("Unknown command!");
 		}
 	} else if (sem_pt.command == "ENTER_ELEVATOR"){
-		ROS_WARN("ENTER_ELEVATOR not implemented yet");
+		control_primitive.behaviour = "GOTO";
+		pt.pose.position.x = 2.9;
+		pt.pose.position.y = 2.9;
+		pt.pose.position.z = 0;
+		pt.pose.orientation.x = 0.70711;
+		pt.pose.orientation.y = 0.0;
+		pt.pose.orientation.z = 0.0;
+		pt.pose.orientation.w = 0.70711;
+		control_primitive.poses.push_back(pt);
+		control_primitive.behaviour = "GOTO";
+		pt.pose.position.x = 2.9;
+		pt.pose.position.y = 2.9;
+		pt.pose.position.z = 0;
+		pt.pose.orientation.x = 0.70711;
+		pt.pose.orientation.y = 0.0;
+		pt.pose.orientation.z = 0.0;
+		pt.pose.orientation.w = -0.70711;
+		control_primitive.poses.push_back(pt);
 	} else if (sem_pt.command == "EXIT_ELEVATOR"){
-		ROS_WARN("EXIT_ELEVATOR not implemented yet");
+		control_primitive.behaviour = "GOTO";
+		pt.pose.position.x = 3.7;
+		pt.pose.position.y = 2.3;
+		pt.pose.position.z = 0;
+		pt.pose.orientation.x = 1.0;
+		pt.pose.orientation.y = 0.0;
+		pt.pose.orientation.z = 0;
+		pt.pose.orientation.w = 0;
+		control_primitive.poses.push_back(pt);
 	} else if (sem_pt.command == "PAUSE"){
 		ROS_WARN("PAUSE not implemented yet");
 	} else if (sem_pt.command == "RESUME"){
