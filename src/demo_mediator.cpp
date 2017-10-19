@@ -12,44 +12,52 @@ ros::Subscriber sem_waypoint_sub;
 
 void groundSemanticWaypoints(const ropod_ros_msgs::ropod_sem_waypoint sem_pt, ropod_ros_msgs::ropod_control_primitive& control_primitive)
 {
-	geometry_msgs::Point pt;
+	geometry_msgs::PoseStamped pt;
 
 	// needs to be repaced wth querying the WM
 	if (sem_pt.command == "GOTO"){
 		if (sem_pt.location == "START"){
 			// set behaviour used to reach the waypoint
 			control_primitive.behaviour = "GOTO";
-			pt.x = 0;
-			pt.y = 0;
-			pt.z = 0;
-			control_primitive.point.push_back(pt);
+			pt.pose.position.x = 0.65;
+			pt.pose.position.y = 2.2;
+			pt.pose.position.z = 0;
+			pt.pose.orientation.x = 0.92388;
+			pt.pose.orientation.y = 0.0;
+			pt.pose.orientation.z = 0.0;
+			pt.pose.orientation.w = 0.38268;
+			control_primitive.poses.push_back(pt);
 		} else if (sem_pt.location == "MOBIDIK"){
 			control_primitive.behaviour = "GOTO";
-			pt.x = 1;
-			pt.y = 0;
-			pt.z = 0;
-			control_primitive.point.push_back(pt);
+			pt.pose.position.x = 1.8;
+			pt.pose.position.y = 2.2;
+			pt.pose.position.z = 0;
+			pt.pose.orientation.x = 1.0;
+			pt.pose.orientation.y = 0.0;
+			pt.pose.orientation.z = 0;
+			pt.pose.orientation.w = 0;
+			control_primitive.poses.push_back(pt);
 		} else if (sem_pt.location == "ELEVATOR"){
 			control_primitive.behaviour = "GOTO";
-			pt.x = 1;
-			pt.y = 1;
-			pt.z = 0;
-			control_primitive.point.push_back(pt);
-			pt.x = 2;
-			pt.y = 2;
-			pt.z = 0;
-			control_primitive.point.push_back(pt);
+			pt.pose.position.x = 2.6;
+			pt.pose.position.y = 1.95;
+			pt.pose.position.z = 0;
+			pt.pose.orientation.x = 0.70711;
+			pt.pose.orientation.y = 0.0;
+			pt.pose.orientation.z = 0.0;
+			pt.pose.orientation.w = 0.70711;
+			control_primitive.poses.push_back(pt);
 		} else {
 			ROS_WARN("Unknown command!");
 		}
 	} else if (sem_pt.command == "ENTER_ELEVATOR"){
-		ROS_INFO("ENTER_ELEVATOR not implemented yet");
+		ROS_WARN("ENTER_ELEVATOR not implemented yet");
 	} else if (sem_pt.command == "EXIT_ELEVATOR"){
-		ROS_INFO("EXIT_ELEVATOR not implemented yet");
+		ROS_WARN("EXIT_ELEVATOR not implemented yet");
 	} else if (sem_pt.command == "PAUSE"){
-		ROS_INFO("PAUSE not implemented yet");
+		ROS_WARN("PAUSE not implemented yet");
 	} else if (sem_pt.command == "RESUME"){
-		ROS_INFO("RESUME not implemented yet");
+		ROS_WARN("RESUME not implemented yet");
 	} else {
 		ROS_WARN("Unknown command!");
 	}
