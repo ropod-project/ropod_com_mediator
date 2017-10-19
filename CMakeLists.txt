@@ -27,38 +27,6 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 catkin_package(
   CATKIN_DEPENDS roscpp ropod_ros_msgs
 )
-########################################################################
-# LIBZMQ dependency
-########################################################################
-find_package(libzmq REQUIRED)
-IF (LIBZMQ_FOUND)
-    include_directories(${LIBZMQ_INCLUDE_DIRS})
-    list(APPEND LIBS ${LIBZMQ_LIBRARIES})
-ELSE (LIBZMQ_FOUND)
-    message( FATAL_ERROR "libzmq not found." )
-ENDIF (LIBZMQ_FOUND)
-
-########################################################################
-# CZMQ dependency
-########################################################################
-find_package(czmq REQUIRED)
-IF (CZMQ_FOUND)
-    include_directories(${CZMQ_INCLUDE_DIRS})
-    list(APPEND LIBS ${CZMQ_LIBRARIES})
-ELSE (CZMQ_FOUND)
-    message( FATAL_ERROR "czmq not found." )
-ENDIF (CZMQ_FOUND)
-
-########################################################################
-# Zyre dependency
-########################################################################
-find_package(zyre REQUIRED)
-IF (ZYRE_FOUND)
-    include_directories(${ZYRE_INCLUDE_DIRS})
-    list(APPEND LIBS ${ZYRE_LIBRARIES})
-ELSE (ZYRE_FOUND)
-    message( FATAL_ERROR "zyre not found." )
-ENDIF (ZYRE_FOUND)
 
 ########################################################################
 # JSON dependency
@@ -68,13 +36,13 @@ ENDIF (ZYRE_FOUND)
 #target_link_libraries(${JSONCPP_LIBRARIES})
 #include_directories(${JSONCPP_INCLUDE_DIRS})
 
-find_package(jsoncpp REQUIRED)
-IF (JSONCPP_FOUND)
-    include_directories(${JSONCPP_INCLUDE_DIRS})
-    list(APPEND LIBS ${JSONCPP_LIBRARIES})
-ELSE (JSONCPP_FOUND)
-    message( FATAL_ERROR "JSONCPP not found." )
-ENDIF (JSONCPP_FOUND)
+#find_package(jsoncpp REQUIRED)
+#IF (JSONCPP_FOUND)
+#    include_directories(${JSONCPP_INCLUDE_DIRS})
+#    list(APPEND LIBS ${JSONCPP_LIBRARIES})
+#ELSE (JSONCPP_FOUND)
+#    message( FATAL_ERROR "JSONCPP not found." )
+#ENDIF (JSONCPP_FOUND)
 
 
 ########################################################################
