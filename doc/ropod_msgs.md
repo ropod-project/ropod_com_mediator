@@ -216,21 +216,23 @@ junction j1 .         .   ......................
     "command": "GOTO",
     "location": "MOBIDIK",
     "status": "approaching",
-    "reached_area": {
+    "reachedArea": {
       "areaName": "c1",
-      "sequneceNumber": 1,
+      "sequenceNumber": 1,
       "totalNumber": 4 
-     } 
-    "reached_waypoint": {
+    }, 
+    "reachedWaypoint": {
       "position": {
           "rencferenceId": "basement_map",
           "x": 10,
           "y": 20
-      }
-      "sequneceNumber": 2,
+      },
+      "sequenceNumber": 2,
       "totalNumber": 5 
     }
   }
 }
 ```
+
+TBD: message ID
 
