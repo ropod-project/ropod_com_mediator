@@ -24,14 +24,14 @@
 
 
 #include "zyre.h"
-#include <jsoncpp/json/json.h>
+#include <json/json.h>
 #include <iostream>
 
 
 //  This actor will listen and publish anything received
 //  on the CHAT group
 
-static void 
+static void
 chat_actor (zsock_t *pipe, void *args)
 {
     zyre_t *node = zyre_new ((char *) args);
@@ -55,7 +55,7 @@ chat_actor (zsock_t *pipe, void *args)
             if (streq (command, "$TERM"))
                 terminated = true;
             else
-            if (streq (command, "SHOUT")) { 
+            if (streq (command, "SHOUT")) {
                 char *string = zmsg_popstr (msg);
                 zyre_shouts (node, "CHAT", "%s", string);
             }
@@ -165,7 +165,7 @@ main (int argc, char *argv [])
     }
     zactor_t *actor = zactor_new (chat_actor, argv [1]);
     assert (actor);
-    
+
     while (!zsys_interrupted) {
         char message [1024];
         if (!fgets (message, 1024, stdin))
@@ -176,4 +176,3 @@ main (int argc, char *argv [])
     zactor_destroy (&actor);
     return 0;
 }
-

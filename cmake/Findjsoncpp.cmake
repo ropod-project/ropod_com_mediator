@@ -4,9 +4,11 @@
 #  JSONCPP_INCLUDE_DIRS - The JSONCPP include directories
 #  JSONCPP_LIBRARIES - The libraries needed to use JSONCPP
 
-find_path(JSONCPP_INCLUDE_DIR jsoncpp/json/json.h
+find_path(JSONCPP_INCLUDE_DIR json/json.h
           /usr/include
-          /usr/local/include )
+          /usr/include/jsoncpp
+          /usr/local/include
+          /usr/local/include/jsoncpp )
 
 find_library(JSONCPP_LIBRARY NAMES libjsoncpp.so
              PATHS /usr/lib /usr/local/lib )
