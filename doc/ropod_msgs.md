@@ -185,5 +185,52 @@ Full message example:
 
 # Progress Messages
 
-TBD
+```
+                .... 
+              .  x  . docking_area
+              .......     
+   --------+  ......c2 +---------------
+           |  .  x  .  |
+-----------+  ......   +---------------
+            .......  
+            .   x  ....   ......................
+            .       x .   .   x          x wp1 .
+junction j1 .         .   ......................
+            ...........           corriddor c1
+---------------------------------------       
+
+
+```
+
+
+
+```
+{
+  "header": {
+    "type": "Progress",
+    "metamodel": "ropod-msg-schema.json",
+    "msg_id": "200663fa-a659-48bc-b295-b01c1680a81d"
+  },
+  "payload": {
+    "metamodel": "ropod-demo-task-progress-schema.json",
+    "command": "GOTO",
+    "location": "MOBIDIK",
+    "status": "approaching",
+    "reached_area": {
+      "areaName": "c1",
+      "sequneceNumber": 1,
+      "totalNumber": 4 
+     } 
+    "reached_waypoint": {
+      "position": {
+          "rencferenceId": "basement_map",
+          "x": 10,
+          "y": 20
+      }
+      "sequneceNumber": 2,
+      "totalNumber": 5 
+    }
+  }
+}
+```
 

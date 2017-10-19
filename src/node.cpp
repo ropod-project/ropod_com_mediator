@@ -164,7 +164,7 @@ int main(int argc, char **argv)
 {
 
     if (argc < 2) {
-        puts ("syntax: ./chat myname");
+        puts ("syntax: ./ropod_com_mediator <name>");
         exit (0);
     }
 
