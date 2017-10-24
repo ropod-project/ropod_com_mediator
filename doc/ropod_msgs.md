@@ -207,7 +207,7 @@ junction j1 .         .   ......................
 ```
 {
   "header": {
-    "type": "Progress",
+    "type": "TaskProgress",
     "metamodel": "ropod-msg-schema.json",
     "msg_id": "200663fa-a659-48bc-b295-b01c1680a81d"
   },
@@ -234,5 +234,36 @@ junction j1 .         .   ......................
 }
 ```
 
-TBD: message ID
+
+
+# Robot Pose Message
+
+```
+{
+  "header":{
+    "type":"RobotPose2D",
+    "metamodel":"ropod-msg-schema.json",
+    "msg_id":"5073dcfb-4849-42cd-a17a-ef33fa7c7a69"
+  },
+  "payload":{
+    "metamodel":"ropod-demo-robot-pose-2d-schema.json",
+    "robotId":"ropod_0",
+    "pose":{
+      "rencferenceId":"basement_map",
+      "x":10,
+      "y":20,
+      "theta":3.1415
+    }
+  }
+}
+```
+# Unit convention
+
+Unit convention (will be added to message models in a new iteration) are *SI* units:
+
+* position in **m**
+* orientation in **RAD**
+
+The values relate to  the *frame* as specified by ``rencferenceId``. For the demo this is the basement map as used by gmapping.
+
 

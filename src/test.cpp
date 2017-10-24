@@ -39,7 +39,7 @@ chat_actor (zsock_t *pipe, void *args)
         return;                 //  Could not create new node
 
     zyre_start (node);
-    zyre_join (node, "CHAT");
+    zyre_join (node, "ROPOD");
     zsock_signal (pipe, 0);     //  Signal "ready" to caller
 
     bool terminated = false;
@@ -57,7 +57,7 @@ chat_actor (zsock_t *pipe, void *args)
             else
             if (streq (command, "SHOUT")) {
                 char *string = zmsg_popstr (msg);
-                zyre_shouts (node, "CHAT", "%s", string);
+                zyre_shouts (node, "ROPOD", "%s", string);
             }
             else {
                 puts ("E: invalid message to actor");
