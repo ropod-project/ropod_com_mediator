@@ -14,6 +14,7 @@ set(INSTALL_DIR /usr/lib CACHE PATH "Installation directory for mediator")
 # ROS dependency
 ########################################################################
 find_package(catkin REQUIRED COMPONENTS roscpp message_generation ropod_ros_msgs)
+find_package(yaml-cpp REQUIRED)
 
 include_directories(include ${catkin_INCLUDE_DIRS})
 
@@ -53,8 +54,8 @@ catkin_package(
 
 
 add_executable(ropod_wm_mediator_demo ${PROJECT_SOURCE_DIR}/src/demo_mediator.cpp ${HEADER_FILES})
-target_link_libraries(ropod_wm_mediator_demo ${LIBS} ${catkin_LIBRARIES})
+target_link_libraries(ropod_wm_mediator_demo ${LIBS} ${catkin_LIBRARIES} yaml-cpp)
+target_compile_features(ropod_wm_mediator_demo PRIVATE cxx_range_for)
 
 add_executable(test_wm_mediator ${PROJECT_SOURCE_DIR}/src/test.cpp ${HEADER_FILES})
 target_link_libraries(test_wm_mediator ${LIBS} ${catkin_LIBRARIES})
-
