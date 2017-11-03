@@ -190,7 +190,14 @@ int main(int argc, char **argv)
     assert (actor);
 
 	ROS_INFO("Ready.");
-	ros::spin();
+
+    ros::Rate r(10);
+    while (ros::ok() && !zsys_interrupted)
+    {
+	    ros::spinOnce();
+        r.sleep();
+    }
+    zactor_destroy(&actor);
 
 	return 0;
 }
