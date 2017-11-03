@@ -3,7 +3,7 @@
 #### Launch
 
 ```
-roslaunch ropod_com_mediator ropod_com_mediator.launch
+roslaunch ropod_com_mediator com_mediator.launch
 ```
 
 #### Topics
