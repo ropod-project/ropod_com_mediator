@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<launch>
+    <node name="ropod_com_mediator" pkg="ropod_com_mediator" type="ropod_com_mediator" output="screen" args="ropod_com_mediator" />
+</launch>
