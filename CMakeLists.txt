@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.6)
-project(ropod-com-mediator)
+project(ropod_com_mediator)
 
-set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/ropod-com-mediator/cmake")
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/ropod_com_mediator/cmake")
 
 set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/bin)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
@@ -95,4 +95,3 @@ target_link_libraries(ropod_comm_mediator_test ${LIBS})
 
 add_executable(ropod_com_mediator ${PROJECT_SOURCE_DIR}/src/node.cpp ${HEADER_FILES})
 target_link_libraries(ropod_com_mediator ${LIBS}  ${catkin_LIBRARIES})
-

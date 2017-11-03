@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>ropod-com-mediator</name>
+  <name>ropod_com_mediator</name>
   <version>0.0.0</version>
   <description>ROPOD communication parameters</description>
 
