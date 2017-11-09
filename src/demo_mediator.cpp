@@ -71,9 +71,9 @@ void groundSemanticWaypoints(const ropod_ros_msgs::ropod_sem_waypoint sem_pt, ro
     }
     else if (sem_pt.command == "ENTER_ELEVATOR")
     {
-        control_primitive.behaviour = "GOTO";
+        control_primitive.behaviour = "TAKE_ELEVATOR";
         control_primitive.poses.push_back(waypoints["INSIDE_ELEVATOR1"]);
-        control_primitive.poses.push_back(waypoints["INSIDE_ELEVATOR2"]);
+        control_primitive.poses.push_back(waypoints["OUTSIDE_ELEVATOR"]);
     }
     else if (sem_pt.command == "EXIT_ELEVATOR")
     {
