@@ -17,6 +17,8 @@
 
 ros::Publisher zyreToRosPuplisher;
 ros::Publisher zyreToRosCommandsPuplisher;
+tf2_ros::Buffer tfListener;
+tf2_ros::TransformListener* tfUpdateListener;
 
 static void
 chat_actor (zsock_t *pipe, void *args)
@@ -162,6 +164,25 @@ chat_actor (zsock_t *pipe, void *args)
     zyre_destroy (&node);
 }
 
+void processTfTopic () {
+	std::string tfFrameId = "base_link";
+	std::string tfFrameReferenceId = "map";
+	ros::Duration maxTFCacheDuration = ros::Duration(10.0); // [s]
+	geometry_msgs::TransformStamped transform;
+	try{
+		transform = tfListener.lookupTransform(tfFrameReferenceId, tfFrameId, ros::Time(0));
+	}
+	catch (tf2::TransformException ex){
+		ROS_WARN("%s",ex.what());
+	}
+
+	if ( (ros::Time::now() - transform.header.stamp) > maxTFCacheDuration ) { //simply ignore outdated TF frames
+		ROS_WARN("TF found for %s. But it is outdated. Skipping it.", tfFrameId.c_str());
+	}
+	ROS_INFO("TF found for %s.", tfFrameId.c_str());
+
+}
+
 int main(int argc, char **argv)
 {
 
@@ -176,9 +197,8 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, nodeName);
 	ros::NodeHandle node;
 
-	tf2_ros::Buffer tfListener;
-	tf2_ros::TransformListener* tfUpdateListener= new tf2_ros::TransformListener(tfListener);
-	//tfListener._addTransformsChangedListener(boost::bind(&WorldModelNode::processTfTopic, this));
+	//tf2_ros::TransformListener* tfUpdateListener = new tf2_ros::TransformListener(tfListener);
+	tfListener._addTransformsChangedListener(boost::bind(processTfTopic)); // call on change
 
 	/// Publisher used for the updates
 //	ros::Publisher zyreToRosPuplisher;
