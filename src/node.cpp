@@ -199,7 +199,7 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, nodeName);
 	ros::NodeHandle node;
 
-	//tf2_ros::TransformListener* tfUpdateListener = new tf2_ros::TransformListener(tfListener);
+	tf2_ros::TransformListener* tfUpdateListener = new tf2_ros::TransformListener(tfListener);
 	tfListener._addTransformsChangedListener(boost::bind(processTfTopic)); // call on change
 
 	/// Publisher used for the updates
@@ -222,10 +222,11 @@ int main(int argc, char **argv)
     while (ros::ok() && !zsys_interrupted)
     {
 	    ros::spinOnce();
-	    processTfTopic();
+//	    processTfTopic();
         r.sleep();
     }
     zactor_destroy(&actor);
+    delete tfUpdateListener;
 
 	return 0;
 }
