@@ -22,6 +22,8 @@
 
 ros::Publisher zyreToRosPuplisher;
 ros::Publisher zyreToRosCommandsPuplisher;
+
+/* TF */
 tf2_ros::Buffer tfListener;
 tf2_ros::TransformListener* tfUpdateListener;
 ros::Time lastSend;
@@ -185,11 +187,13 @@ void processTfTopic (zactor_t *actor) {
 	try{
 		transform = tfListener.lookupTransform(tfFrameReferenceId, tfFrameId, ros::Time(0));
 		tf2::Quaternion q;
-//		q = transform.transform.getRotation();
+		q.setX(transform.transform.rotation.x); // there is certainly a more elegant way than this ...
+		q.setY(transform.transform.rotation.y);
+		q.setZ(transform.transform.rotation.z);
+		q.setW(transform.transform.rotation.w);
 		tf2::Matrix3x3 m;
 		m.setRotation(q);
-		m.getRPY(roll,yaw,pitch);
-
+		m.getRPY(roll,pitch, yaw);
 	}
 	catch (tf2::TransformException ex){
 		ROS_WARN("%s",ex.what());
@@ -203,7 +207,7 @@ void processTfTopic (zactor_t *actor) {
 	ROS_INFO("TF found for %s.", tfFrameId.c_str());
 
 
-	if (ros::Time::now() - lastSend > ros::Duration(minSendDurationInSec)) {
+	if (ros::Time::now() - lastSend > ros::Duration(minSendDurationInSec)) { // throttld down pose messages
 		ROS_INFO("Sending Zyre message.");
 
 		/* Convert to JSON Message */
@@ -271,7 +275,6 @@ int main(int argc, char **argv)
 
 
 	/// Publisher used for the updates
-//	ros::Publisher zyreToRosPuplisher;
 	zyreToRosPuplisher = node.advertise<std_msgs::String>("ropod_zyre_debug", 100);
 	zyreToRosCommandsPuplisher = node.advertise<ropod_ros_msgs::ropod_sem_waypoint_list>("ropod_commands", 100);
 	std_msgs::String rosMsg;
@@ -289,7 +292,7 @@ int main(int argc, char **argv)
 	ROS_INFO("tfFrameReferenceId = %s", tfFrameReferenceId.c_str());
 	ROS_INFO("robotName = %s", robotName.c_str());
 	ROS_INFO("zyreGroupName = %s\n", zyreGroupName.c_str());
-
+	ROS_INFO("minSendDurationInSec = %lf\n", minSendDurationInSec);
 
 	/* Initialize Zyre framework */
     zactor_t *actor = zactor_new (chat_actor, argv); //TODO use configurable name
@@ -306,7 +309,6 @@ int main(int argc, char **argv)
     while (ros::ok() && !zsys_interrupted)
     {
 	    ros::spinOnce();
-//	    processTfTopic();
         r.sleep();
     }
 
