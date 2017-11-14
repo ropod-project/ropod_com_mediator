@@ -1,9 +1,16 @@
 #include <iostream>
 #include <fstream>
+#include <sstream>
 
 /* ROS includes */
 #include <ros/ros.h>
 #include <std_msgs/String.h>
+#include <tf2_ros/buffer.h> //TF
+#include <tf2_ros/transform_listener.h> //TF
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/transform_datatypes.h>
+#include <tf2/convert.h>
 
 /* Zyre + JONS includes */
 #include "zyre.h"
@@ -16,6 +23,18 @@
 ros::Publisher zyreToRosPuplisher;
 ros::Publisher zyreToRosCommandsPuplisher;
 
+/* TF */
+tf2_ros::Buffer tfListener;
+tf2_ros::TransformListener* tfUpdateListener;
+ros::Time lastSend;
+
+/* Parameters */
+std::string tfFrameId = "base_link";
+std::string tfFrameReferenceId = "map";
+std::string robotName = "ropod_0";
+std::string zyreGroupName = "ROPOD";
+double minSendDurationInSec = 1.0;
+
 static void
 chat_actor (zsock_t *pipe, void *args)
 {
@@ -24,7 +43,7 @@ chat_actor (zsock_t *pipe, void *args)
         return;                 //  Could not create new node
 
     zyre_start (node);
-    zyre_join (node, "ROPOD");
+    zyre_join (node, zyreGroupName.c_str());
     zsock_signal (pipe, 0);     //  Signal "ready" to caller
 
     bool terminated = false;
@@ -160,6 +179,85 @@ chat_actor (zsock_t *pipe, void *args)
     zyre_destroy (&node);
 }
 
+void processTfTopic (zactor_t *actor) {
+
+	ros::Duration maxTFCacheDuration = ros::Duration(10.0); // [s]
+	geometry_msgs::TransformStamped transform;
+	double roll,yaw,pitch;
+	try{
+		transform = tfListener.lookupTransform(tfFrameReferenceId, tfFrameId, ros::Time(0));
+		tf2::Quaternion q;
+		q.setX(transform.transform.rotation.x); // there is certainly a more elegant way than this ...
+		q.setY(transform.transform.rotation.y);
+		q.setZ(transform.transform.rotation.z);
+		q.setW(transform.transform.rotation.w);
+		tf2::Matrix3x3 m;
+		m.setRotation(q);
+		m.getRPY(roll,pitch, yaw);
+	}
+	catch (tf2::TransformException ex){
+		ROS_WARN("%s",ex.what());
+		return;
+	}
+
+	if ( (ros::Time::now() - transform.header.stamp) > maxTFCacheDuration ) { //simply ignore outdated TF frames
+		ROS_WARN("TF found for %s. But it is outdated. Skipping it.", tfFrameId.c_str());
+		return;
+	}
+	ROS_INFO("TF found for %s.", tfFrameId.c_str());
+
+
+	if (ros::Time::now() - lastSend > ros::Duration(minSendDurationInSec)) { // throttld down pose messages
+		ROS_INFO("Sending Zyre message.");
+
+		/* Convert to JSON Message */
+		Json::Value msg;
+	//	{
+	//	  "header":{
+	//	    "type":"RobotPose2D",
+	//	    "metamodel":"ropod-msg-schema.json",
+	//	    "msg_id":"5073dcfb-4849-42cd-a17a-ef33fa7c7a69"
+	//	  },
+	//	  "payload":{
+	//	    "metamodel":"ropod-demo-robot-pose-2d-schema.json",
+	//	    "robotId":"ropod_0",
+	//	    "pose":{
+	//	      "rencferenceId":"basement_map",
+	//	      "x":10,
+	//	      "y":20,
+	//	      "theta":3.1415
+	//	    }
+	//	  }
+	//	}
+		msg["header"]["type"] = "RobotPose2D";
+		msg["header"]["metamodel"] = "ropod-msg-schema.json";
+		zuuid_t * uuid = zuuid_new();
+		const char * uuid_str = zuuid_str_canonical(uuid);
+		msg["header"]["msg_id"] = uuid_str;
+		zuuid_destroy (&uuid);
+		//int64_t now = zclock_time();
+		char *timestr = zclock_timestr (); // TODO: this is not ISO 8601
+		msg["header"]["timestamp"] = timestr;
+		zstr_free(&timestr);
+
+
+		msg["payload"]["metamodel"] = "ropod-demo-robot-pose-2d-schema.json";
+		msg["payload"]["robotId"] = robotName;
+		msg["payload"]["pose"]["rencferenceId"] = tfFrameReferenceId;
+		msg["payload"]["pose"]["x"] = transform.transform.translation.x;
+		msg["payload"]["pose"]["y"] = transform.transform.translation.y;
+		msg["payload"]["pose"]["theta"] = yaw;
+
+		std::stringstream poseMsg("");
+		poseMsg << msg;
+		zstr_sendx (actor, "SHOUT", poseMsg.str().c_str(), NULL);
+
+		lastSend = ros::Time::now();
+	}
+
+
+}
+
 int main(int argc, char **argv)
 {
 
@@ -175,19 +273,35 @@ int main(int argc, char **argv)
 	ros::NodeHandle node;
 
 
+
 	/// Publisher used for the updates
-//	ros::Publisher zyreToRosPuplisher;
 	zyreToRosPuplisher = node.advertise<std_msgs::String>("ropod_zyre_debug", 100);
 	zyreToRosCommandsPuplisher = node.advertise<ropod_ros_msgs::ropod_sem_waypoint_list>("ropod_commands", 100);
 	std_msgs::String rosMsg;
 	zyreToRosPuplisher.publish(rosMsg);
 
 	/* parameters */
+	node.param<std::string>("tfFrameId", tfFrameId, "base_link");
+	node.param<std::string>("tfFrameReferenceId", tfFrameReferenceId, "map");
+	node.param<std::string>("robotName", robotName, "ropod_0");
+	node.param<std::string>("zyreGroupName", zyreGroupName, "ROPOD");
+	node.param<double>("minSendDurationInSec", minSendDurationInSec, 1.0);
 
+	ROS_INFO("Using parameters: ");
+	ROS_INFO("tfFrameId = %s", tfFrameId.c_str());
+	ROS_INFO("tfFrameReferenceId = %s", tfFrameReferenceId.c_str());
+	ROS_INFO("robotName = %s", robotName.c_str());
+	ROS_INFO("zyreGroupName = %s\n", zyreGroupName.c_str());
+	ROS_INFO("minSendDurationInSec = %lf\n", minSendDurationInSec);
 
 	/* Initialize Zyre framework */
     zactor_t *actor = zactor_new (chat_actor, argv); //TODO use configurable name
     assert (actor);
+
+    /* Initialize TF */
+	tf2_ros::TransformListener* tfUpdateListener = new tf2_ros::TransformListener(tfListener);
+	tfListener._addTransformsChangedListener(boost::bind(processTfTopic, actor)); // call on change
+	lastSend = ros::Time::now();
 
 	ROS_INFO("Ready.");
 
@@ -197,6 +311,10 @@ int main(int argc, char **argv)
 	    ros::spinOnce();
         r.sleep();
     }
+
+    /* Clean up */
+    ROS_INFO("Cleaning up.");
+    delete tfUpdateListener;
     zactor_destroy(&actor);
 
 	return 0;
