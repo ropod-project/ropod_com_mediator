@@ -174,10 +174,12 @@ void processTfTopic () {
 	}
 	catch (tf2::TransformException ex){
 		ROS_WARN("%s",ex.what());
+		return;
 	}
 
 	if ( (ros::Time::now() - transform.header.stamp) > maxTFCacheDuration ) { //simply ignore outdated TF frames
 		ROS_WARN("TF found for %s. But it is outdated. Skipping it.", tfFrameId.c_str());
+		return;
 	}
 	ROS_INFO("TF found for %s.", tfFrameId.c_str());
 
@@ -220,6 +222,7 @@ int main(int argc, char **argv)
     while (ros::ok() && !zsys_interrupted)
     {
 	    ros::spinOnce();
+	    processTfTopic();
         r.sleep();
     }
     zactor_destroy(&actor);
