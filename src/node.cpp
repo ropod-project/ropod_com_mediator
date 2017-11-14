@@ -243,7 +243,7 @@ void processTfTopic (zactor_t *actor) {
 
 		msg["payload"]["metamodel"] = "ropod-demo-robot-pose-2d-schema.json";
 		msg["payload"]["robotId"] = robotName;
-		msg["payload"]["pose"]["rencferenceId"] = tfFrameReferenceId;
+		msg["payload"]["pose"]["referenceId"] = tfFrameReferenceId;
 		msg["payload"]["pose"]["x"] = transform.transform.translation.x;
 		msg["payload"]["pose"]["y"] = transform.transform.translation.y;
 		msg["payload"]["pose"]["theta"] = yaw;
