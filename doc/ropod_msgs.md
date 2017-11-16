@@ -1,5 +1,8 @@
 ROPOD Messages for Demo 1
 =========================
+The demo structure is shown in the image.
+![](images/demo_architecture.svg)
+
 
 # Envelope structure
 
@@ -11,7 +14,7 @@ ROPOD Messages for Demo 1
 - payload: JSON subpart (required) 
  - with required "metamodel" tag
 
-# Waypoint Messages
+# CCU command Messages
 
 Full message example:
 
@@ -216,20 +219,32 @@ junction j1 .         .   ......................
     "command": "GOTO",
     "location": "MOBIDIK",
     "status": "approaching",
-    "reachedArea": {
-      "areaName": "c1",
-      "sequenceNumber": 1,
-      "totalNumber": 4 
-    }, 
-    "reachedWaypoint": {
-      "position": {
-          "rencferenceId": "basement_map",
-          "x": 10,
-          "y": 20
-      },
-      "sequenceNumber": 2,
-      "totalNumber": 5 
-    }
+    "Areas": [
+      {
+		"areaName": "c1",
+		"sequenceNumber": 1,
+		"totalNumber": 4,
+		"status": "traversing|waiting",
+		"Waypoints": [
+		  {
+			"WaypointPosition": {
+				"rencferenceId": "basement_map",
+				"x": 10,
+				"y": 20
+			},
+			"status": "reached|approaching",
+			"sequenceNumber": 2,
+			"totalNumber": 5 
+		  },
+		  {
+		  ...
+		  }
+		]
+	  },
+	  {
+	  ...
+	  }
+    ]
   }
 }
 ```
