@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 2.8.6)
+
 project(ropod-com-mediator)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/ropod-com-mediator/cmake")
@@ -82,13 +83,11 @@ ELSE (JSONCPP_FOUND)
     message( FATAL_ERROR "JSONCPP not found." )
 ENDIF (JSONCPP_FOUND)
 
-
 ########################################################################
 # Mediator
 ########################################################################
 #include_directories(${PROJECT_SOURCE_DIR}/include)
 #set(HEADER_FILES ${PROJECT_SOURCE_DIR}/include/mediator.h)
-
 
 add_executable(ropod_comm_mediator_test ${PROJECT_SOURCE_DIR}/src/test.cpp ${HEADER_FILES})
 target_link_libraries(ropod_comm_mediator_test ${LIBS})
