@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>ropod_wm_mediator</name>
+  <name>ropod-com-mediator</name>
   <version>0.0.0</version>
-  <description>ROPOD worl model mediator</description>
+  <description>ROPOD communication parameters</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->

@@ -1,36 +1,20 @@
+#include <iostream>
+#include <fstream>
 
-//  --------------------------------------------------------------------------
-//  Example Zyre distributed chat application
-//
-//  Copyright (c) 2010-2014 The Authors
-//
-//  Permission is hereby granted, free of charge, to any person obtaining a
-//  copy of this software and associated documentation files (the "Software"),
-//  to deal in the Software without restriction, including without limitation
-//  the rights to use, copy, modify, merge, publish, distribute, sublicense,
-//  and/or sell copies of the Software, and to permit persons to whom the
-//  Software is furnished to do so, subject to the following conditions:
-//
-//  The above copyright notice and this permission notice shall be included in
-//  all copies or substantial portions of the Software.
-//
-//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-//  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-//  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-//  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-//  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-//  DEALINGS IN THE SOFTWARE.
-//  --------------------------------------------------------------------------
+/* ROS includes */
+#include <ros/ros.h>
+#include <std_msgs/String.h>
 
-
+/* Zyre + JONS includes */
 #include "zyre.h"
 #include <json/json.h>
 #include <iostream>
 
+/* ROPOD ROS messages */
+#include <ropod_ros_msgs/ropod_sem_waypoint_list.h>
 
-//  This actor will listen and publish anything received
-//  on the CHAT group
+ros::Publisher zyreToRosPuplisher;
+ros::Publisher zyreToRosCommandsPuplisher;
 
 static void
 chat_actor (zsock_t *pipe, void *args)
@@ -40,7 +24,7 @@ chat_actor (zsock_t *pipe, void *args)
         return;                 //  Could not create new node
 
     zyre_start (node);
-    zyre_join (node, "CHAT");
+    zyre_join (node, "ROPOD");
     zsock_signal (pipe, 0);     //  Signal "ready" to caller
 
     bool terminated = false;
@@ -58,7 +42,7 @@ chat_actor (zsock_t *pipe, void *args)
             else
             if (streq (command, "SHOUT")) {
                 char *string = zmsg_popstr (msg);
-                zyre_shouts (node, "CHAT", "%s", string);
+                zyre_shouts (node, "ROPOD", "%s", string);
             }
             else {
                 puts ("E: invalid message to actor");
@@ -90,12 +74,15 @@ chat_actor (zsock_t *pipe, void *args)
             	Json::Reader reader;
             	bool parsingSuccessful = reader.parse(message, msg);     //parse process
             	if (parsingSuccessful) {
+
+            		/* Debug topic */
+            		Json::FastWriter fast;
+		    		std_msgs::String rosMsg;
+		    		rosMsg.data = fast.write(msg);
+		    		zyreToRosPuplisher.publish(rosMsg);
+
+
             		std::cout  << "[DEBUG]   type = "  << msg["header"]["type"].asString() << std::endl;
-//            		if(!msg.isMember("header")) {
-//            			std::cout  << "[WARNING] No header specified." << std::endl;
-//            		} else {
-//            			std::cout  << "[DEBUG]   Header found." << std::endl;
-//            		}
             		std::string type = msg["header"]["type"].asString();
             		if(type.compare("CMD") == 0) {
             			std::cout  << "[INFO]    Received a command." << std::endl;
@@ -107,14 +94,28 @@ chat_actor (zsock_t *pipe, void *args)
             				std::cout  << "[DEBUG]   Payload found." << std::endl;
             				Json::Value commandList = payload["commandList"];
 
+
+            				ropod_ros_msgs::ropod_sem_waypoint_list wayPointList;
+
             			    for (int i = 0; i < commandList.size(); i++){
             			    	std::cout << " command: " << commandList[i]["command"].asString();
             			    	std::cout << " location: " << commandList[i]["location"].asString();
             			    	std::cout << std::endl;
 
+            			    	ropod_ros_msgs::ropod_sem_waypoint wayPoint;
+            			    	wayPoint.command = commandList[i]["command"].asString();
+            			    	wayPoint.location = commandList[i]["location"].asString();
+            			    	wayPointList.sem_waypoint.push_back(wayPoint);
+
+
             			    	if(commandList[i]["command"].asString().compare("GOTO") == 0) {
             			    		std::string location = commandList[i]["location"].asString();
             			    		std::cout  << "[INFO]    Received a GOTO location = " << location << " command." << std::endl;
+
+            			    		//ropod_ros_msgs::ropod_sem_waypoint_list cmdMsg;
+            			    		//cmdMsg.
+
+            			    		//zyreToRosCommandsPuplisher.publish(cmdMsg);
 
             			    	} else if(commandList[i]["command"].asString().compare("ENTER_ELEVATOR") == 0) {
             			    		std::cout  << "[INFO]    Received a ENTER_ELEVATOR  command." << std::endl;
@@ -131,6 +132,8 @@ chat_actor (zsock_t *pipe, void *args)
             			    	}
 
             			    }
+
+            			    zyreToRosCommandsPuplisher.publish(wayPointList);
             			}
 
             		}
@@ -157,23 +160,37 @@ chat_actor (zsock_t *pipe, void *args)
     zyre_destroy (&node);
 }
 
-int
-main (int argc, char *argv [])
+int main(int argc, char **argv)
 {
+
     if (argc < 2) {
-        puts ("syntax: ./chat myname");
+        puts ("syntax: ./ropod_com_mediator <name>");
         exit (0);
     }
-    zactor_t *actor = zactor_new (chat_actor, argv [1]);
+
+	std::string nodeName = "ropod_com_mediator_ropod_1";
+
+	/* Initialize ROS framework */
+	ros::init(argc, argv, nodeName);
+	ros::NodeHandle node;
+
+
+	/// Publisher used for the updates
+//	ros::Publisher zyreToRosPuplisher;
+	zyreToRosPuplisher = node.advertise<std_msgs::String>("ropod_zyre_debug", 100);
+	zyreToRosCommandsPuplisher = node.advertise<ropod_ros_msgs::ropod_sem_waypoint_list>("ropod_commands", 100);
+	std_msgs::String rosMsg;
+	zyreToRosPuplisher.publish(rosMsg);
+
+	/* parameters */
+
+
+	/* Initialize Zyre framework */
+    zactor_t *actor = zactor_new (chat_actor, argv); //TODO use configurable name
     assert (actor);
 
-    while (!zsys_interrupted) {
-        char message [1024];
-        if (!fgets (message, 1024, stdin))
-            break;
-        message [strlen (message) - 1] = 0;     // Drop the trailing linefeed
-        zstr_sendx (actor, "SHOUT", message, NULL);
-    }
-    zactor_destroy (&actor);
-    return 0;
+	ROS_INFO("Ready.");
+	ros::spin();
+
+	return 0;
 }
