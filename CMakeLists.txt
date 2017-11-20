@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 2.8.6)
 
-project(ropod-com-mediator)
+project(ropod_wm_mediator)
 
-set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/ropod-com-mediator/cmake")
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/ropod_wm_mediator/cmake")
 
 set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/bin)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
@@ -89,9 +89,8 @@ ENDIF (JSONCPP_FOUND)
 #include_directories(${PROJECT_SOURCE_DIR}/include)
 #set(HEADER_FILES ${PROJECT_SOURCE_DIR}/include/mediator.h)
 
-add_executable(ropod_comm_mediator_test ${PROJECT_SOURCE_DIR}/src/test.cpp ${HEADER_FILES})
-target_link_libraries(ropod_comm_mediator_test ${LIBS})
+add_executable(ropod_wm_mediator_test ${PROJECT_SOURCE_DIR}/src/test.cpp ${HEADER_FILES})
+target_link_libraries(ropod_wm_mediator_test ${LIBS})
 
-add_executable(ropod_com_mediator ${PROJECT_SOURCE_DIR}/src/node.cpp ${HEADER_FILES})
-target_link_libraries(ropod_com_mediator ${LIBS}  ${catkin_LIBRARIES})
-
+add_executable(ropod_wm_mediator ${PROJECT_SOURCE_DIR}/src/node.cpp ${HEADER_FILES})
+target_link_libraries(ropod_wm_mediator ${LIBS}  ${catkin_LIBRARIES})
