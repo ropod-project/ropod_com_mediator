@@ -1,7 +1,7 @@
 ROPOD Messages for Demo 1
 =========================
 The demo structure is shown in the image.
-![](images/demo_architecture.svg)
+![](demo_architecture.svg)
 
 
 # Envelope structure
@@ -186,7 +186,7 @@ Full message example:
 }
 ```
 
-# Progress Messages
+# Plan message
 
 ```
                 .... 
@@ -205,7 +205,9 @@ junction j1 .         .   ......................
 
 ```
 
+Names are good for debugging but in programs we should only use the IDs.
 
+Note: After demo Sebastian and Nico will generalize at least locations and areas to the same format for ease of use in hierarchical plans. Therefore, all have a "locationStatus" already.
 
 ```
 {
@@ -215,39 +217,74 @@ junction j1 .         .   ......................
     "msg_id": "200663fa-a659-48bc-b295-b01c1680a81d"
   },
   "payload": {
-    "metamodel": "ropod-demo-task-progress-schema.json",
-    "command": "GOTO",
-    "location": "MOBIDIK",
-    "status": "approaching",
-    "Areas": [
+    "metamodel": "ropod-demo-plan-schema.json",
+    "planId": "c0b5c1e1-3930-4724-ac91-cb52b6b918e7",
+    "locations": [
       {
-		"areaName": "c1",
-		"sequenceNumber": 1,
-		"totalNumber": 4,
-		"status": "traversing|waiting",
-		"Waypoints": [
-		  {
-			"WaypointPosition": {
-				"rencferenceId": "basement_map",
-				"x": 10,
-				"y": 20
+        "locationName": "MOBIDIK",
+        "command": "GOTO",
+        "id": "0d19dded-806f-43f0-8777-888de32507fb",
+        "locationStatus": {
+			"status":  "reached|approaching|pending"
+			"sequenceNumber": 1,
+			"totalNumber": 3 
+		},
+        "areas": [
+          {
+			"areaName": "c1"
+			"id": "5dd2b820-eec2-4add-be47-3673d5d6225c",
+			"locationStatus": {
+			  "status":  "reached|approaching|pending"
+			  "sequenceNumber": 3,
+			  "totalNumber": 4
 			},
-			"status": "reached|approaching",
-			"sequenceNumber": 2,
-			"totalNumber": 5 
-		  },
-		  {
-		  ...
-		  }
-		]
-	  },
-	  {
-	  ...
-	  }
+			waypoints: [
+			  {
+			    "id": "431c3330-742d-4bc6-a73a-e3b056b7bcdd",
+				"locationStatus": {
+				  "status":  "reached|approaching|pending"
+				  "sequenceNumber": 2,
+				  "totalNumber": 5
+				},
+				"waypointPosition": {
+				  "rencferenceId": "basement_map",
+				  "x": 10,
+				  "y": 20
+				}
+			  },
+			  {
+			  ...
+			  }
+			]
+          },
+          {
+          ...
+          }
+        ]
+      },
+      {
+      ...
+      }
     ]
   }
 }
 ```
+
+# Feedback/Progress message
+The id is enough to find the part of a plan this update refers to. Can refer to to any location, area, or even waypoint. Note: After demo Sebastian and Nico will generalize at least locations and areas to the same format for ease of use in hierarchical plans.
+
+Later we want to define a progress message that has a generic part (like the sequence numbers) and a task specific part, such that at least the generic part can always be vizualised.
+
+Should this be sent regularly or only when a status changes?
+
+statusUpdate: {
+      "id": "c6c84d7d-2658-4e06-8684-7004d8d3180d",
+      "status":  "reached"
+      "sequenceNumber": 2,
+      "totalNumber": 5 
+}
+
+
 
 TBD: message ID
 
