@@ -212,7 +212,7 @@ Note: After demo Sebastian and Nico will generalize at least locations and areas
 ```
 {
   "header": {
-    "type": "Progress",
+    "type": "plan",
     "metamodel": "ropod-msg-schema.json",
     "msg_id": "200663fa-a659-48bc-b295-b01c1680a81d"
   },
@@ -277,14 +277,55 @@ Later we want to define a progress message that has a generic part (like the seq
 
 Should this be sent regularly or only when a status changes?
 
-statusUpdate: {
-      "id": "c6c84d7d-2658-4e06-8684-7004d8d3180d",
+
+```
+{
+  "header":{
+    "type":"progress",
+    "metamodel":"ropod-msg-schema.json",
+    "msg_id":"5073dcfb-4849-42cd-a17a-ef33fa7c7a69"
+  },
+  "payload":{
+    "metamodel":"ropod-demo-progress-schema.json",
+    "id": "c6c84d7d-2658-4e06-8684-7004d8d3180d",
+    "status": {
       "status":  "reached"
       "sequenceNumber": 2,
       "totalNumber": 5 
+	}
+  }
 }
+```
 
+# Robot Pose Message
 
+```
+{
+  "header":{
+    "type":"RobotPose2D",
+    "metamodel":"ropod-msg-schema.json",
+    "msg_id":"5073dcfb-4849-42cd-a17a-ef33fa7c7a69"
+  },
+  "payload":{
+    "metamodel":"ropod-demo-robot-pose-2d-schema.json",
+    "robotId":"ropod_0",
+    "pose":{
+      "rencferenceId":"basement_map",
+      "x":10,
+      "y":20,
+      "theta":3.1415
+    }
+  }
+}
+```
 
-TBD: message ID
+# Unit convention
+
+Unit convention (will be added to message models in a new iteration) are *SI* units:
+
+* position in **m**
+* orientation in **RAD**
+
+The values relate to  the *frame* as specified by ``rencferenceId``. For the demo this is the basement map as used by gmapping.
+
 

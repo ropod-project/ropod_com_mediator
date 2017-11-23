@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+	<param name="tfFrameId" type="str" value="base_link"/>
+    <param name="tfFrameReferenceId" type="str" value="map"/>
+    <param name="robotName" type="str" value="ropod_0"/>
+    <param name="zyreGroupName" type="str" value="ROPOD"/>   
+    <param name="minSendDurationInSec" type="double" value="0.1"/> 
+
+    <node name="ropod_com_mediator" pkg="ropod_com_mediator" type="ropod_com_mediator" output="screen" args="ropod_com_mediator" />
+</launch>
