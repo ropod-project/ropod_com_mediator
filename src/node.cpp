@@ -222,7 +222,7 @@ void processTfTopic (zactor_t *actor) {
 	//	    "metamodel":"ropod-demo-robot-pose-2d-schema.json",
 	//	    "robotId":"ropod_0",
 	//	    "pose":{
-	//	      "rencferenceId":"basement_map",
+	//	      "referenceId":"basement_map",
 	//	      "x":10,
 	//	      "y":20,
 	//	      "theta":3.1415

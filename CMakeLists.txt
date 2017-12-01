@@ -20,7 +20,6 @@ find_package(catkin REQUIRED COMPONENTS
     ropod_ros_msgs
     tf2
     tf2_msgs 
-    tf2_bullet 
     tf2_ros   
 )
 

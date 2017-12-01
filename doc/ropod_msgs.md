@@ -247,7 +247,7 @@ Note: After demo Sebastian and Nico will generalize at least locations and areas
 				  "totalNumber": 5
 				},
 				"waypointPosition": {
-				  "rencferenceId": "basement_map",
+				  "referenceId": "basement_map",
 				  "x": 10,
 				  "y": 20
 				}
@@ -310,7 +310,7 @@ Should this be sent regularly or only when a status changes?
     "metamodel":"ropod-demo-robot-pose-2d-schema.json",
     "robotId":"ropod_0",
     "pose":{
-      "rencferenceId":"basement_map",
+      "referenceId":"basement_map",
       "x":10,
       "y":20,
       "theta":3.1415
@@ -326,6 +326,6 @@ Unit convention (will be added to message models in a new iteration) are *SI* un
 * position in **m**
 * orientation in **RAD**
 
-The values relate to  the *frame* as specified by ``rencferenceId``. For the demo this is the basement map as used by gmapping.
+The values relate to  the *frame* as specified by ``referenceId``. For the demo this is the basement map as used by gmapping.
 
 

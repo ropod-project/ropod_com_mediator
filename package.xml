@@ -40,7 +40,6 @@
 	<build_depend>tf2</build_depend>
 	<build_depend>tf2_ros</build_depend>
 	<build_depend>tf2_msgs</build_depend>
-	<build_depend>tf2_bullet</build_depend>
   <!-- Use buildtool_depend for build tool packages: -->
   <!--   <buildtool_depend>catkin</buildtool_depend> -->
   <!-- Use run_depend for packages you need at runtime: -->
@@ -50,7 +49,6 @@
 	 <run_depend>tf2</run_depend>
 	<run_depend>tf2_ros</run_depend>
 	<run_depend>tf2_msgs</run_depend>
-	<run_depend>tf2_bullet</run_depend>
   <!-- Use test_depend for packages you need only for testing: -->
   <!--   <test_depend>gtest</test_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
