@@ -62,7 +62,7 @@ chat_actor (zsock_t *pipe, void *args)
             else
             if (streq (command, "SHOUT")) {
                 char *string = zmsg_popstr (msg);
-                zyre_shouts (node, "ROPOD", "%s", string);
+                zyre_shouts (node, zyreGroupName.c_str(), "%s", string);
             }
             else {
                 puts ("E: invalid message to actor");
