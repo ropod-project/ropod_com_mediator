@@ -19,7 +19,6 @@
 
 /* ROPOD ROS messages */
 #include <ropod_ros_msgs/ropod_sem_waypoint_list.h>
-#include <ropod_ros_msgs/ropod_demo_status_update.h>
 
 ros::Publisher zyreToRosPuplisher;
 ros::Publisher zyreToRosCommandsPuplisher;
@@ -62,7 +61,7 @@ chat_actor (zsock_t *pipe, void *args)
             else
             if (streq (command, "SHOUT")) {
                 char *string = zmsg_popstr (msg);
-                zyre_shouts (node, zyreGroupName.c_str(), "%s", string);
+                zyre_shouts (node, "ROPOD", "%s", string);
             }
             else {
                 puts ("E: invalid message to actor");
@@ -205,11 +204,11 @@ void processTfTopic (zactor_t *actor) {
 		ROS_WARN("TF found for %s. But it is outdated. Skipping it.", tfFrameId.c_str());
 		return;
 	}
-	ROS_DEBUG("TF found for %s.", tfFrameId.c_str());
+	ROS_INFO("TF found for %s.", tfFrameId.c_str());
 
 
 	if (ros::Time::now() - lastSend > ros::Duration(minSendDurationInSec)) { // throttld down pose messages
-		ROS_DEBUG("Sending Zyre message.");
+		ROS_INFO("Sending Zyre message.");
 
 		/* Convert to JSON Message */
 		Json::Value msg;
@@ -259,48 +258,6 @@ void processTfTopic (zactor_t *actor) {
 
 }
 
-void feedbackCallback(const ropod_ros_msgs::ropod_demo_status_update::ConstPtr &ros_msg, zactor_t *actor)
-{
-    Json::Value msg;
-    //{
-    //  "header":{
-    //    "type":"progress",
-    //    "metamodel":"ropod-msg-schema.json",
-    //    "msg_id":"5073dcfb-4849-42cd-a17a-ef33fa7c7a69"
-    //  },
-    //  "payload":{
-    //    "metamodel":"ropod-demo-progress-schema.json",
-    //    "id": "c6c84d7d-2658-4e06-8684-7004d8d3180d",
-    //    "status": {
-    //      "status":  "reached"
-    //      "sequenceNumber": 2,
-    //      "totalNumber": 5
-    //    }
-    //}
-
-    msg["header"]["type"] = "progress";
-    msg["header"]["metamodel"] = "ropod-msg-schema.json";
-    zuuid_t * uuid = zuuid_new();
-    const char * uuid_str = zuuid_str_canonical(uuid);
-    msg["header"]["msg_id"] = uuid_str;
-    zuuid_destroy (&uuid);
-    //int64_t now = zclock_time();
-    char *timestr = zclock_timestr (); // TODO: this is not ISO 8601
-    msg["header"]["timestamp"] = timestr;
-    zstr_free(&timestr);
-
-
-    msg["payload"]["metamodel"] = "ropod-demo-progress-schema.json";
-    msg["payload"]["id"] = ros_msg->id;
-    msg["payload"]["status"]["status"] = ros_msg->status.status;
-    msg["payload"]["status"]["sequenceNumber"] = ros_msg->status.sequenceNumber;
-    msg["payload"]["status"]["totalNumber"] = ros_msg->status.totalNumber;
-
-    std::stringstream feedbackMsg("");
-    feedbackMsg << msg;
-    zstr_sendx (actor, "SHOUT", feedbackMsg.str().c_str(), NULL);
-}
-
 int main(int argc, char **argv)
 {
 
@@ -345,8 +302,6 @@ int main(int argc, char **argv)
 	tf2_ros::TransformListener* tfUpdateListener = new tf2_ros::TransformListener(tfListener);
 	tfListener._addTransformsChangedListener(boost::bind(processTfTopic, actor)); // call on change
 	lastSend = ros::Time::now();
-
-    ros::Subscriber feedback_sub = node.subscribe<ropod_ros_msgs::ropod_demo_status_update>("ropod_task_feedback", 1, boost::bind(feedbackCallback, _1, actor));
 
 	ROS_INFO("Ready.");
 
