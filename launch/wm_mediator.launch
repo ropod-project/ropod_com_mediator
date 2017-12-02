@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="waypoint_cmd_topic" default="/waypoint_cmd"/>
+    <arg name="semantic_waypoint_topic" default="/ropod_commands"/>
+    <param name="/semantic_waypoint_file" type="string" value="$(find ropod_wm_mediator)/config/waypoints.yaml" />
+    <node name="ropod_wm_mediator" pkg="ropod_wm_mediator" type="ropod_wm_mediator_demo" output="screen">
+        <remap from="waypoint_cmd_topic" to="$(arg waypoint_cmd_topic)" />
+        <remap from="semantic_waypoint_topic" to="$(arg semantic_waypoint_topic)" />
+    </node>
+</launch>
