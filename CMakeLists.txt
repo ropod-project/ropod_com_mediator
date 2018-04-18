@@ -97,7 +97,9 @@ ENDIF (JSONCPP_FOUND)
 #set(HEADER_FILES ${PROJECT_SOURCE_DIR}/include/mediator.h)
 
 add_executable(ropod_comm_mediator_test ${PROJECT_SOURCE_DIR}/src/test.cpp ${HEADER_FILES})
+add_dependencies(ropod_comm_mediator_test ropod_ros_msgs_gencpp)
 target_link_libraries(ropod_comm_mediator_test ${LIBS})
 
 add_executable(ropod_com_mediator ${PROJECT_SOURCE_DIR}/src/node.cpp ${HEADER_FILES})
+add_dependencies(ropod_com_mediator ropod_ros_msgs_gencpp)
 target_link_libraries(ropod_com_mediator ${LIBS}  ${catkin_LIBRARIES})
