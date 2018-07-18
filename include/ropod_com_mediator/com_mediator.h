@@ -16,7 +16,7 @@
 #include <json/json.h>
 #include <iostream>
 
-#include <ropod_ros_msgs/ropod_demo_status_update.h>
+#include <ropod_ros_msgs/TaskProgressGOTO.h>
 #include <ropod_ros_msgs/Task.h>
 #include <ropod_ros_msgs/ElevatorRequest.h>
 #include <ropod_ros_msgs/ElevatorRequestReply.h>
@@ -51,7 +51,7 @@ public:
     virtual ~ComMediator();
 
     virtual void recvMsgCallback(ZyreMsgContent *msgContent);
-    void progressCallback(const ropod_ros_msgs::ropod_demo_status_update::ConstPtr &ros_msg);
+    void progressCallback(const ropod_ros_msgs::TaskProgressGOTO::ConstPtr &ros_msg);
     void elevatorRequestCallback(const ropod_ros_msgs::ElevatorRequest::ConstPtr &ros_msg);
     void tfCallback();
 };

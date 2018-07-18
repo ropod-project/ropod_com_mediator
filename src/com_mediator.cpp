@@ -17,7 +17,7 @@ ComMediator::ComMediator()
 	tfBuffer._addTransformsChangedListener(boost::bind(&ComMediator::tfCallback, this)); // call on change
 
     ropod_commands_pub = nh.advertise<ropod_ros_msgs::Task>("task", 1);
-    progress_sub = nh.subscribe<ropod_ros_msgs::ropod_demo_status_update>("ropod_task_feedback", 1,
+    progress_sub = nh.subscribe<ropod_ros_msgs::TaskProgressGOTO>("ropod_task_feedback", 1,
                                         &ComMediator::progressCallback, this);
 
     elevator_request_sub = nh.subscribe<ropod_ros_msgs::ElevatorRequest>("elevator_request", 1,
@@ -57,26 +57,11 @@ void ComMediator::recvMsgCallback(ZyreMsgContent *msgContent)
     }
 }
 
-void ComMediator::progressCallback(const ropod_ros_msgs::ropod_demo_status_update::ConstPtr &ros_msg)
+void ComMediator::progressCallback(const ropod_ros_msgs::TaskProgressGOTO::ConstPtr &ros_msg)
 {
     Json::Value msg;
-    //{
-    //  "header":{
-    //    "type":"progress",
-    //    "metamodel":"ropod-msg-schema.json",
-    //    "msg_id":"5073dcfb-4849-42cd-a17a-ef33fa7c7a69"
-    //  },
-    //  "payload":{
-    //    "metamodel":"ropod-demo-progress-schema.json",
-    //    "id": "c6c84d7d-2658-4e06-8684-7004d8d3180d",
-    //    "status": {
-    //      "status":  "reached"
-    //      "sequenceNumber": 2,
-    //      "totalNumber": 5
-    //    }
-    //}
 
-    msg["header"]["type"] = "progress";
+    msg["header"]["type"] = "TASK-PROGRESS";
     msg["header"]["metamodel"] = "ropod-msg-schema.json";
     zuuid_t * uuid = zuuid_new();
     const char * uuid_str = zuuid_str_canonical(uuid);
@@ -89,10 +74,14 @@ void ComMediator::progressCallback(const ropod_ros_msgs::ropod_demo_status_updat
 
 
     msg["payload"]["metamodel"] = "ropod-demo-progress-schema.json";
-    msg["payload"]["id"] = ros_msg->id;
-    msg["payload"]["status"]["status"] = ros_msg->status.status;
-    msg["payload"]["status"]["sequenceNumber"] = ros_msg->status.sequenceNumber;
-    msg["payload"]["status"]["totalNumber"] = ros_msg->status.totalNumber;
+    msg["payload"]["taskId"] = ros_msg->task_id;
+    msg["payload"]["robotId"] = ros_msg->robot_id;
+    msg["payload"]["actionId"] = ros_msg->action_id;
+    msg["payload"]["actionType"] = ros_msg->action_type;
+    msg["payload"]["status"]["areaName"] = ros_msg->area_name;
+    msg["payload"]["status"]["status"] = ros_msg->status;
+    msg["payload"]["status"]["sequenceNumber"] = ros_msg->sequenceNumber;
+    msg["payload"]["status"]["totalNumber"] = ros_msg->totalNumber;
 
     std::stringstream feedbackMsg("");
     feedbackMsg << msg;
