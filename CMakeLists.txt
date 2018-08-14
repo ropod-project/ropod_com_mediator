@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8.6)
 
 project(ropod_com_mediator)
+set(CMAKE_CXX_STANDARD 11)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -23,7 +24,11 @@ find_package(catkin REQUIRED COMPONENTS
     tf2_ros   
 )
 
-include_directories(include ${catkin_INCLUDE_DIRS})
+include_directories(
+    include
+    /opt/ropod_common/zyre_communicator/include
+    ${catkin_INCLUDE_DIRS}
+)
 
 #generate_messages(
 #  DEPENDENCIES
@@ -100,6 +105,9 @@ add_executable(ropod_comm_mediator_test ${PROJECT_SOURCE_DIR}/src/test.cpp ${HEA
 add_dependencies(ropod_comm_mediator_test ropod_ros_msgs_gencpp)
 target_link_libraries(ropod_comm_mediator_test ${LIBS})
 
-add_executable(ropod_com_mediator ${PROJECT_SOURCE_DIR}/src/node.cpp ${HEADER_FILES})
+add_executable(ropod_com_mediator
+    ${PROJECT_SOURCE_DIR}/src/com_mediator.cpp
+    ${HEADER_FILES}
+    /opt/ropod_common/zyre_communicator/src/ZyreBaseCommunicator.cpp)
 add_dependencies(ropod_com_mediator ropod_ros_msgs_gencpp)
 target_link_libraries(ropod_com_mediator ${LIBS}  ${catkin_LIBRARIES})
