@@ -48,7 +48,7 @@ void ComMediator::recvMsgCallback(ZyreMsgContent *msgContent)
             {
                 parseAndPublishTaskMessage(root);
             }
-            else if (root["header"]["type"] == "ELEVATOR-CMD-REPLY")
+            else if (root["header"]["type"] == "ROBOT-ELEVATOR-CALL-REPLY")
             {
                 parseAndPublishElevatorReply(root);
             }
@@ -91,7 +91,7 @@ void ComMediator::progressCallback(const ropod_ros_msgs::TaskProgressGOTO::Const
 void ComMediator::elevatorRequestCallback(const ropod_ros_msgs::ElevatorRequest::ConstPtr &ros_msg)
 {
     Json::Value msg;
-    msg["header"]["type"] = "ELEVATOR-CMD";
+    msg["header"]["type"] = "ROBOT-ELEVATOR-CALL-REQUEST";
     msg["header"]["metamodel"] = "ropod-msg-schema.json";
     zuuid_t * uuid = zuuid_new();
     const char * uuid_str = zuuid_str_canonical(uuid);
@@ -105,6 +105,7 @@ void ComMediator::elevatorRequestCallback(const ropod_ros_msgs::ElevatorRequest:
 
     msg["payload"]["metamodel"] = "ropod-elevator-cmd-schema.json";
     msg["payload"]["queryId"] = ros_msg->query_id;
+    msg["payload"]["robotId"] = robotName;
     msg["payload"]["command"] = ros_msg->command;
     msg["payload"]["startFloor"] = ros_msg->start_floor;
     msg["payload"]["goalFloor"] = ros_msg->goal_floor;
