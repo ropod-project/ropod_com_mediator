@@ -15,18 +15,18 @@ set(INSTALL_DIR /usr/lib CACHE PATH "Installation directory for mediator")
 ########################################################################
 # ROS dependency
 ########################################################################
-find_package(catkin REQUIRED COMPONENTS 
-    roscpp 
-    message_generation 
+find_package(catkin REQUIRED COMPONENTS
+    roscpp
+    message_generation
     ropod_ros_msgs
     tf2
-    tf2_msgs 
-    tf2_ros   
+    tf2_msgs
+    tf2_ros
 )
 
 include_directories(
     include
-    /opt/ropod_common/zyre_communicator/include
+    /opt/ropod/ropod_common/zyre_communicator/include
     ${catkin_INCLUDE_DIRS}
 )
 
@@ -108,6 +108,6 @@ target_link_libraries(ropod_comm_mediator_test ${LIBS})
 add_executable(ropod_com_mediator
     ${PROJECT_SOURCE_DIR}/src/com_mediator.cpp
     ${HEADER_FILES}
-    /opt/ropod_common/zyre_communicator/src/ZyreBaseCommunicator.cpp)
+    /opt/ropod/ropod_common/zyre_communicator/src/ZyreBaseCommunicator.cpp)
 add_dependencies(ropod_com_mediator ropod_ros_msgs_gencpp)
 target_link_libraries(ropod_com_mediator ${LIBS}  ${catkin_LIBRARIES})
