@@ -198,30 +198,34 @@ void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
 {
     ropod_ros_msgs::Task task;
     task.task_id = root["payload"]["taskId"].asString();
-    task.start_time = root["payload"]["start_time"].asDouble();
-    task.cart_type = root["payload"]["deviceType"].asString();
-    task.cart_id = root["payload"]["deviceId"].asString();
-    for (auto robot_id : root["payload"]["teamRobotIds"])
+    task.start_time = root["payload"]["earliest_start_time"].asDouble();
+    task.start_time = root["payload"]["latest_start_time"].asDouble();
+    task.cart_type = root["payload"]["cart_type"].asString();
+    task.cart_id = root["payload"]["cart_id"].asString();
+    task.cart_id = root["payload"]["estimated_duration"].asDouble();
+    task.cart_id = root["payload"]["priority"].asInt();
+    for (auto robot_id : root["payload"]["team_robot_ids"])
     {
         std::string robot_id_str = robot_id.asString();
         task.team_robot_ids.push_back(robot_id_str);
     }
-    const Json::Value &robot_action_list = root["payload"]["actions"];
-    for (int i = 0; i< robot_action_list.size(); i++)
+    const Json::Value &action_list = root["payload"]["actions"];
+    for (int i = 0; i< action_list.size(); i++)
     {
         ropod_ros_msgs::Action action;
-        action.action_id = robot_action_list[i]["id"].asString();
-        action.type = robot_action_list[i]["type"].asString();
+        action.action_id = action_list[i]["id"].asString();
+        action.type = action_list[i]["type"].asString();
         if (action.type == "GOTO")
         {
-            action.execution_status = robot_action_list[i]["execution_status"].asString();
-            action.estimated_duration = robot_action_list[i]["eta"].asFloat();
-            const Json::Value &areas = robot_action_list[i]["areas"];
+            action.execution_status = action_list[i]["execution_status"].asString();
+            action.estimated_duration = action_list[i]["eta"].asFloat();
+            const Json::Value &areas = action_list[i]["areas"];
             for (int j = 0; j < areas.size(); j++)
             {
                 ropod_ros_msgs::Area area;
                 area.area_id = areas[j]["id"].asString();
                 area.name = areas[j]["name"].asString();
+                area.floor_number = areas[j]["floor_number"].asInt();
                 const Json::Value &wp = areas[j]["waypoints"];
                 for (int k = 0; k < wp.size(); k++)
                 {
@@ -236,7 +240,7 @@ void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
                 }
                 action.areas.push_back(area);
             }
-            const Json::Value &wp = robot_action_list[i]["waypoints"];
+            const Json::Value &wp = action_list[i]["waypoints"];
             for (int k = 0; k < wp.size(); k++)
             {
                 ropod_ros_msgs::Waypoint waypoint;
@@ -251,10 +255,10 @@ void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
         }
         else if (action.type == "REQUEST_ELEVATOR")
         {
-            action.start_floor = robot_action_list[i]["startFloor"].asInt();
-            action.goal_floor = robot_action_list[i]["goalFloor"].asInt();
+            action.start_floor = action_list[i]["startFloor"].asInt();
+            action.goal_floor = action_list[i]["goalFloor"].asInt();
             std::stringstream ss;
-            ss << robot_action_list[i] << std::endl;
+            ss << action_list[i] << std::endl;
         }
         task.robot_actions.push_back(action);
     }
