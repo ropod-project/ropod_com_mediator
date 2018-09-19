@@ -17,9 +17,9 @@ ComMediator::ComMediator()
 	tfBuffer._addTransformsChangedListener(boost::bind(&ComMediator::tfCallback, this)); // call on change
 
     ropod_commands_pub = nh.advertise<ropod_ros_msgs::Task>("task", 1);
-    progress_goto_sub = nh.subscribe<ropod_ros_msgs::TaskProgressGOTO>("ropod_task_feedback", 1,
+    progress_goto_sub = nh.subscribe<ropod_ros_msgs::TaskProgressGOTO>("ropod_task_feedback/goto", 1,
                                         &ComMediator::progressGOTOCallback, this);
-    progress_dock_sub = nh.subscribe<ropod_ros_msgs::TaskProgressDOCK>("ropod_task_feedback", 1,
+    progress_dock_sub = nh.subscribe<ropod_ros_msgs::TaskProgressDOCK>("ropod_task_feedback/dock", 1,
                                         &ComMediator::progressDOCKCallback, this);
 
     elevator_request_sub = nh.subscribe<ropod_ros_msgs::ElevatorRequest>("elevator_request", 1,
