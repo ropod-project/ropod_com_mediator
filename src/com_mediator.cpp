@@ -17,8 +17,10 @@ ComMediator::ComMediator()
 	tfBuffer._addTransformsChangedListener(boost::bind(&ComMediator::tfCallback, this)); // call on change
 
     ropod_commands_pub = nh.advertise<ropod_ros_msgs::Task>("task", 1);
-    progress_sub = nh.subscribe<ropod_ros_msgs::TaskProgressGOTO>("ropod_task_feedback", 1,
-                                        &ComMediator::progressCallback, this);
+    progress_goto_sub = nh.subscribe<ropod_ros_msgs::TaskProgressGOTO>("ropod_task_feedback", 1,
+                                        &ComMediator::progressGOTOCallback, this);
+    progress_dock_sub = nh.subscribe<ropod_ros_msgs::TaskProgressDOCK>("ropod_task_feedback", 1,
+                                        &ComMediator::progressDOCKCallback, this);
 
     elevator_request_sub = nh.subscribe<ropod_ros_msgs::ElevatorRequest>("elevator_request", 1,
                                         &ComMediator::elevatorRequestCallback, this);
@@ -57,7 +59,7 @@ void ComMediator::recvMsgCallback(ZyreMsgContent *msgContent)
     }
 }
 
-void ComMediator::progressCallback(const ropod_ros_msgs::TaskProgressGOTO::ConstPtr &ros_msg)
+void ComMediator::progressGOTOCallback(const ropod_ros_msgs::TaskProgressGOTO::ConstPtr &ros_msg)
 {
     Json::Value msg;
 
@@ -82,6 +84,35 @@ void ComMediator::progressCallback(const ropod_ros_msgs::TaskProgressGOTO::Const
     msg["payload"]["status"]["status"] = ros_msg->status;
     msg["payload"]["status"]["sequenceNumber"] = ros_msg->sequenceNumber;
     msg["payload"]["status"]["totalNumber"] = ros_msg->totalNumber;
+
+    std::stringstream feedbackMsg("");
+    feedbackMsg << msg;
+    this->shout(feedbackMsg.str(), zyreGroupName);
+}
+
+void ComMediator::progressDOCKCallback(const ropod_ros_msgs::TaskProgressDOCK::ConstPtr &ros_msg)
+{
+    Json::Value msg;
+
+    msg["header"]["type"] = "TASK-PROGRESS";
+    msg["header"]["metamodel"] = "ropod-msg-schema.json";
+    zuuid_t * uuid = zuuid_new();
+    const char * uuid_str = zuuid_str_canonical(uuid);
+    msg["header"]["msg_id"] = uuid_str;
+    zuuid_destroy (&uuid);
+    //int64_t now = zclock_time();
+    char *timestr = zclock_timestr (); // TODO: this is not ISO 8601
+    msg["header"]["timestamp"] = timestr;
+    zstr_free(&timestr);
+
+
+    msg["payload"]["metamodel"] = "ropod-demo-progress-schema.json";
+    msg["payload"]["taskId"] = ros_msg->task_id;
+    msg["payload"]["robotId"] = ros_msg->robot_id;
+    msg["payload"]["actionId"] = ros_msg->action_id;
+    msg["payload"]["actionType"] = ros_msg->action_type;
+    msg["payload"]["status"]["areaName"] = ros_msg->area_name;
+    msg["payload"]["status"]["status"] = ros_msg->status;
 
     std::stringstream feedbackMsg("");
     feedbackMsg << msg;
