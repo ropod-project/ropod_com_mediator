@@ -225,6 +225,7 @@ void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
                 ropod_ros_msgs::Area area;
                 area.area_id = areas[j]["id"].asString();
                 area.name = areas[j]["name"].asString();
+                area.type = areas[j]["type"].asString();
                 area.floor_number = areas[j]["floor_number"].asInt();
                 const Json::Value &wp = areas[j]["waypoints"];
                 for (int k = 0; k < wp.size(); k++)
