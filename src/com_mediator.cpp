@@ -65,15 +65,8 @@ void ComMediator::progressGOTOCallback(const ropod_ros_msgs::TaskProgressGOTO::C
 
     msg["header"]["type"] = "TASK-PROGRESS";
     msg["header"]["metamodel"] = "ropod-msg-schema.json";
-    zuuid_t * uuid = zuuid_new();
-    const char * uuid_str = zuuid_str_canonical(uuid);
-    msg["header"]["msg_id"] = uuid_str;
-    zuuid_destroy (&uuid);
-    //int64_t now = zclock_time();
-    char *timestr = zclock_timestr (); // TODO: this is not ISO 8601
-    msg["header"]["timestamp"] = timestr;
-    zstr_free(&timestr);
-
+    msg["header"]["msg_id"] = generateUUID();
+    msg["header"]["timestamp"] = getTimeStamp();
 
     msg["payload"]["metamodel"] = "ropod-demo-progress-schema.json";
     msg["payload"]["taskId"] = ros_msg->task_id;
@@ -81,9 +74,11 @@ void ComMediator::progressGOTOCallback(const ropod_ros_msgs::TaskProgressGOTO::C
     msg["payload"]["actionId"] = ros_msg->action_id;
     msg["payload"]["actionType"] = ros_msg->action_type;
     msg["payload"]["status"]["areaName"] = ros_msg->area_name;
-    msg["payload"]["status"]["status"] = ros_msg->status;
+    msg["payload"]["status"]["actionStatus"] = ros_msg->status.status_code;
+    msg["payload"]["status"]["taskStatus"] = "ongoing";
     msg["payload"]["status"]["sequenceNumber"] = ros_msg->sequenceNumber;
     msg["payload"]["status"]["totalNumber"] = ros_msg->totalNumber;
+    // msg["payload"]["status"]["currentAction"] = ros_msg->currentAction;
 
     std::stringstream feedbackMsg("");
     feedbackMsg << msg;
@@ -112,7 +107,9 @@ void ComMediator::progressDOCKCallback(const ropod_ros_msgs::TaskProgressDOCK::C
     msg["payload"]["actionId"] = ros_msg->action_id;
     msg["payload"]["actionType"] = ros_msg->action_type;
     msg["payload"]["status"]["areaName"] = ros_msg->area_name;
-    msg["payload"]["status"]["status"] = ros_msg->status;
+    msg["payload"]["status"]["actionStatus"] = ros_msg->status.status_code;
+    msg["payload"]["status"]["taskStatus"] = ros_msg->task_status.status_code;
+    // msg["payload"]["status"]["currentAction"] = ros_msg->currentAction;
 
     std::stringstream feedbackMsg("");
     feedbackMsg << msg;

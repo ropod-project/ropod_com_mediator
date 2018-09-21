@@ -19,6 +19,7 @@
 #include <ropod_ros_msgs/TaskProgressGOTO.h>
 #include <ropod_ros_msgs/TaskProgressDOCK.h>
 #include <ropod_ros_msgs/Task.h>
+#include <ropod_ros_msgs/Status.h>
 #include <ropod_ros_msgs/ElevatorRequest.h>
 #include <ropod_ros_msgs/ElevatorRequestReply.h>
 #include "ZyreBaseCommunicator.h"
