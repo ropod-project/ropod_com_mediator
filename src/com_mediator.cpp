@@ -243,7 +243,7 @@ void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
         ropod_ros_msgs::Action action;
         action.action_id = action_list[i]["id"].asString();
         action.type = action_list[i]["type"].asString();
-        if (action.type == "GOTO")
+        if (action.type == "GOTO" || action.type == "DOCK" || action.type == "UNDOCK")
         {
             action.execution_status = action_list[i]["execution_status"].asString();
             action.estimated_duration = action_list[i]["eta"].asFloat();
