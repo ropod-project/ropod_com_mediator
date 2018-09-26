@@ -151,7 +151,7 @@ void ComMediator::tfCallback()
 	geometry_msgs::TransformStamped transform;
 	double roll,yaw,pitch;
 	try{
-		transform = tfBuffer.lookupTransform(tfFrameReferenceId, tfFrameId, ros::Time(0));
+		transform = tfBuffer.lookupTransform(tfFrameReferenceId, tfFrameId, ros::Time(0), ros::Duration(3.0));
 		tf2::Quaternion q;
 		q.setX(transform.transform.rotation.x); // there is certainly a more elegant way than this ...
 		q.setY(transform.transform.rotation.y);
