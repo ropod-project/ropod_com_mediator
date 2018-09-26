@@ -17,7 +17,9 @@
 #include <iostream>
 
 #include <ropod_ros_msgs/TaskProgressGOTO.h>
+#include <ropod_ros_msgs/TaskProgressDOCK.h>
 #include <ropod_ros_msgs/Task.h>
+#include <ropod_ros_msgs/Status.h>
 #include <ropod_ros_msgs/ElevatorRequest.h>
 #include <ropod_ros_msgs/ElevatorRequestReply.h>
 #include "ZyreBaseCommunicator.h"
@@ -27,7 +29,8 @@ class ComMediator : ZyreBaseCommunicator
 private:
     ros::NodeHandle nh;
     ros::Publisher ropod_commands_pub;
-    ros::Subscriber progress_sub;
+    ros::Subscriber progress_goto_sub;
+    ros::Subscriber progress_dock_sub;
     ros::Subscriber elevator_request_sub;
     ros::Publisher elevator_request_reply_pub;
 
@@ -51,7 +54,8 @@ public:
     virtual ~ComMediator();
 
     virtual void recvMsgCallback(ZyreMsgContent *msgContent);
-    void progressCallback(const ropod_ros_msgs::TaskProgressGOTO::ConstPtr &ros_msg);
+    void progressGOTOCallback(const ropod_ros_msgs::TaskProgressGOTO::ConstPtr &ros_msg);
+    void progressDOCKCallback(const ropod_ros_msgs::TaskProgressDOCK::ConstPtr &ros_msg);
     void elevatorRequestCallback(const ropod_ros_msgs::ElevatorRequest::ConstPtr &ros_msg);
     void tfCallback();
 };

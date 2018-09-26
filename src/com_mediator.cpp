@@ -10,15 +10,17 @@ ComMediator::ComMediator()
 {
     nh.param<std::string>("tfFrameId", tfFrameId, "base_link");
     nh.param<std::string>("tfFrameReferenceId", tfFrameReferenceId, "map");
-    nh.param<std::string>("robotName", robotName, "ropod_0");
+    nh.param<std::string>("robotName", robotName, "ropod_1");
     nh.param<double>("minSendDurationInSec", minSendDurationInSec, 1.0);
     nh.param<std::string>("zyreGroupName", zyreGroupName, "ROPOD");
     lastSend = ros::Time::now();
 	tfBuffer._addTransformsChangedListener(boost::bind(&ComMediator::tfCallback, this)); // call on change
 
     ropod_commands_pub = nh.advertise<ropod_ros_msgs::Task>("task", 1);
-    progress_sub = nh.subscribe<ropod_ros_msgs::TaskProgressGOTO>("ropod_task_feedback", 1,
-                                        &ComMediator::progressCallback, this);
+    progress_goto_sub = nh.subscribe<ropod_ros_msgs::TaskProgressGOTO>("ropod_task_feedback/goto", 1,
+                                        &ComMediator::progressGOTOCallback, this);
+    progress_dock_sub = nh.subscribe<ropod_ros_msgs::TaskProgressDOCK>("ropod_task_feedback/dock", 1,
+                                        &ComMediator::progressDOCKCallback, this);
 
     elevator_request_sub = nh.subscribe<ropod_ros_msgs::ElevatorRequest>("elevator_request", 1,
                                         &ComMediator::elevatorRequestCallback, this);
@@ -57,7 +59,34 @@ void ComMediator::recvMsgCallback(ZyreMsgContent *msgContent)
     }
 }
 
-void ComMediator::progressCallback(const ropod_ros_msgs::TaskProgressGOTO::ConstPtr &ros_msg)
+void ComMediator::progressGOTOCallback(const ropod_ros_msgs::TaskProgressGOTO::ConstPtr &ros_msg)
+{
+    Json::Value msg;
+
+    msg["header"]["type"] = "TASK-PROGRESS";
+    msg["header"]["metamodel"] = "ropod-msg-schema.json";
+    msg["header"]["msg_id"] = generateUUID();
+    msg["header"]["timestamp"] = getTimeStamp();
+
+    msg["payload"]["metamodel"] = "ropod-demo-progress-schema.json";
+    msg["payload"]["taskId"] = ros_msg->task_id;
+    // msg["payload"]["robotId"] = ros_msg->robot_id;
+    msg["payload"]["robotId"] = robotName;
+    msg["payload"]["actionId"] = ros_msg->action_id;
+    msg["payload"]["actionType"] = ros_msg->action_type;
+    msg["payload"]["status"]["areaName"] = ros_msg->area_name;
+    msg["payload"]["status"]["actionStatus"] = ros_msg->status.status_code;
+    msg["payload"]["status"]["taskStatus"] = "ongoing";
+    msg["payload"]["status"]["sequenceNumber"] = ros_msg->sequenceNumber;
+    msg["payload"]["status"]["totalNumber"] = ros_msg->totalNumber;
+    // msg["payload"]["status"]["currentAction"] = ros_msg->currentAction;
+
+    std::stringstream feedbackMsg("");
+    feedbackMsg << msg;
+    this->shout(feedbackMsg.str(), zyreGroupName);
+}
+
+void ComMediator::progressDOCKCallback(const ropod_ros_msgs::TaskProgressDOCK::ConstPtr &ros_msg)
 {
     Json::Value msg;
 
@@ -75,13 +104,14 @@ void ComMediator::progressCallback(const ropod_ros_msgs::TaskProgressGOTO::Const
 
     msg["payload"]["metamodel"] = "ropod-demo-progress-schema.json";
     msg["payload"]["taskId"] = ros_msg->task_id;
-    msg["payload"]["robotId"] = ros_msg->robot_id;
+    // msg["payload"]["robotId"] = ros_msg->robot_id;
+    msg["payload"]["robotId"] = robotName;
     msg["payload"]["actionId"] = ros_msg->action_id;
     msg["payload"]["actionType"] = ros_msg->action_type;
     msg["payload"]["status"]["areaName"] = ros_msg->area_name;
-    msg["payload"]["status"]["status"] = ros_msg->status;
-    msg["payload"]["status"]["sequenceNumber"] = ros_msg->sequenceNumber;
-    msg["payload"]["status"]["totalNumber"] = ros_msg->totalNumber;
+    msg["payload"]["status"]["actionStatus"] = ros_msg->status.status_code;
+    msg["payload"]["status"]["taskStatus"] = ros_msg->task_status.status_code;
+    // msg["payload"]["status"]["currentAction"] = ros_msg->currentAction;
 
     std::stringstream feedbackMsg("");
     feedbackMsg << msg;
@@ -123,7 +153,7 @@ void ComMediator::tfCallback()
 	geometry_msgs::TransformStamped transform;
 	double roll,yaw,pitch;
 	try{
-		transform = tfBuffer.lookupTransform(tfFrameReferenceId, tfFrameId, ros::Time(0));
+		transform = tfBuffer.lookupTransform(tfFrameReferenceId, tfFrameId, ros::Time(0), ros::Duration(3.0));
 		tf2::Quaternion q;
 		q.setX(transform.transform.rotation.x); // there is certainly a more elegant way than this ...
 		q.setY(transform.transform.rotation.y);
@@ -215,7 +245,7 @@ void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
         ropod_ros_msgs::Action action;
         action.action_id = action_list[i]["id"].asString();
         action.type = action_list[i]["type"].asString();
-        if (action.type == "GOTO")
+        if (action.type == "GOTO" || action.type == "DOCK" || action.type == "UNDOCK")
         {
             action.execution_status = action_list[i]["execution_status"].asString();
             action.estimated_duration = action_list[i]["eta"].asFloat();
