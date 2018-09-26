@@ -1,6 +1,5 @@
 <?xml version="1.0"?>
 <launch>
-	<param name="tfFrameId" type="str" value="base_link"/>
     <param name="tfFrameReferenceId" type="str" value="map"/>
     <param name="robotName" type="str" value="ropod_0"/>
     <param name="zyreGroupName" type="str" value="ROPOD"/>   
