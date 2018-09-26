@@ -10,7 +10,7 @@ ComMediator::ComMediator()
 {
     nh.param<std::string>("tfFrameId", tfFrameId, "base_link");
     nh.param<std::string>("tfFrameReferenceId", tfFrameReferenceId, "map");
-    nh.param<std::string>("robotName", robotName, "ropod_0");
+    nh.param<std::string>("robotName", robotName, "ropod_1");
     nh.param<double>("minSendDurationInSec", minSendDurationInSec, 1.0);
     nh.param<std::string>("zyreGroupName", zyreGroupName, "ROPOD");
     lastSend = ros::Time::now();
@@ -70,7 +70,8 @@ void ComMediator::progressGOTOCallback(const ropod_ros_msgs::TaskProgressGOTO::C
 
     msg["payload"]["metamodel"] = "ropod-demo-progress-schema.json";
     msg["payload"]["taskId"] = ros_msg->task_id;
-    msg["payload"]["robotId"] = ros_msg->robot_id;
+    // msg["payload"]["robotId"] = ros_msg->robot_id;
+    msg["payload"]["robotId"] = robotName;
     msg["payload"]["actionId"] = ros_msg->action_id;
     msg["payload"]["actionType"] = ros_msg->action_type;
     msg["payload"]["status"]["areaName"] = ros_msg->area_name;
@@ -103,7 +104,8 @@ void ComMediator::progressDOCKCallback(const ropod_ros_msgs::TaskProgressDOCK::C
 
     msg["payload"]["metamodel"] = "ropod-demo-progress-schema.json";
     msg["payload"]["taskId"] = ros_msg->task_id;
-    msg["payload"]["robotId"] = ros_msg->robot_id;
+    // msg["payload"]["robotId"] = ros_msg->robot_id;
+    msg["payload"]["robotId"] = robotName;
     msg["payload"]["actionId"] = ros_msg->action_id;
     msg["payload"]["actionType"] = ros_msg->action_type;
     msg["payload"]["status"]["areaName"] = ros_msg->area_name;
