@@ -344,8 +344,10 @@ void ComMediator::parseAndPublishElevatorReply(const Json::Value &root)
 
 void ComMediator::parseAndPublishCommandMessage(const Json::Value &root)
 {
+    std::string command = root["payload"]["command"].asString();
+    ROS_INFO("[com_mediator] Received a '%s' command request", command.c_str());
     ropod_ros_msgs::ExecuteCommand cmd_msg;
-    cmd_msg.command_name = root["payload"]["command"].asString();
+    cmd_msg.command_name = command;
     this->command_pub.publish(cmd_msg);
 }
 
