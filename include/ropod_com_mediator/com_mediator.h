@@ -27,7 +27,7 @@
 #include <ropod_ros_msgs/ElevatorRequestReply.h>
 
 /* Remote experiment messages */
-#include <ropod_ros_msgs/ExecuteCommand.h>
+#include <ropod_ros_msgs/ExecuteExperiment.h>
 #include <ropod_ros_msgs/CommandFeedback.h>
 
 class ComMediator : ZyreBaseCommunicator
@@ -43,7 +43,7 @@ private:
     ros::Publisher elevator_request_reply_pub;
 
     // remote experiments
-    ros::Publisher command_pub;
+    ros::Publisher experiment_pub;
     ros::Subscriber command_feedback_sub;
 
     tf2_ros::Buffer tfBuffer;
@@ -60,7 +60,7 @@ private:
 
     void parseAndPublishTaskMessage(const Json::Value &root);
     void parseAndPublishElevatorReply(const Json::Value &root);
-    void parseAndPublishCommandMessage(const Json::Value &root);
+    void parseAndPublishExperimentMessage(const Json::Value &root);
 
 public:
     ComMediator();

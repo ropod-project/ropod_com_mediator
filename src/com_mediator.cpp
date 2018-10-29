@@ -27,7 +27,7 @@ ComMediator::ComMediator()
     elevator_request_reply_pub = nh.advertise<ropod_ros_msgs::ElevatorRequestReply>("elevator_request_reply", 1);
 
     // remote experiments
-    this->command_pub = nh.advertise<ropod_ros_msgs::ExecuteCommand>("/ropod/execute_command", 1);
+    this->experiment_pub = nh.advertise<ropod_ros_msgs::ExecuteExperiment>("/ropod/execute_experiment", 1);
     this->command_feedback_sub = nh.subscribe<ropod_ros_msgs::CommandFeedback>("/ropod/cmd_feedback", 1,
                                         &ComMediator::commandFeedbackCallback, this);
 }
@@ -60,9 +60,9 @@ void ComMediator::recvMsgCallback(ZyreMsgContent *msgContent)
             {
                 this->parseAndPublishElevatorReply(root);
             }
-            else if (root["header"]["type"] == "ROBOT-COMMAND-REQUEST")
+            else if (root["header"]["type"] == "ROBOT-EXPERIMENT-REQUEST")
             {
-                this->parseAndPublishCommandMessage(root);
+                this->parseAndPublishExperimentMessage(root);
             }
         }
     }
@@ -342,13 +342,13 @@ void ComMediator::parseAndPublishElevatorReply(const Json::Value &root)
     elevator_request_reply_pub.publish(reply);
 }
 
-void ComMediator::parseAndPublishCommandMessage(const Json::Value &root)
+void ComMediator::parseAndPublishExperimentMessage(const Json::Value &root)
 {
-    std::string command = root["payload"]["command"].asString();
-    ROS_INFO("[com_mediator] Received a '%s' command request", command.c_str());
-    ropod_ros_msgs::ExecuteCommand cmd_msg;
-    cmd_msg.command_name = command;
-    this->command_pub.publish(cmd_msg);
+    std::string experiment_type = root["payload"]["experimentType"].asString();
+    ROS_INFO("[com_mediator] Received '%s' experiment request", experiment_type.c_str());
+    ropod_ros_msgs::ExecuteExperiment experiment_msg;
+    experiment_msg.experiment_type = experiment_type;
+    this->experiment_pub.publish(experiment_msg);
 }
 
 int main(int argc, char **argv)
