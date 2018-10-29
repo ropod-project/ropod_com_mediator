@@ -3,8 +3,8 @@
 
 ComMediator::ComMediator()
     : ZyreBaseCommunicator("com_mediator",
-                            std::vector<std::string>{std::string("ROPOD")},
-                            std::vector<std::string>{std::string("TASK")}, false),
+                           std::vector<std::string>{std::string("ROPOD")},
+                           std::vector<std::string>{std::string("TASK")}, false),
     nh("~"),
     tfListener(tfBuffer)
 {
@@ -14,9 +14,9 @@ ComMediator::ComMediator()
     nh.param<double>("minSendDurationInSec", minSendDurationInSec, 1.0);
     nh.param<std::string>("zyreGroupName", zyreGroupName, "ROPOD");
     lastSend = ros::Time::now();
-	tfBuffer._addTransformsChangedListener(boost::bind(&ComMediator::tfCallback, this)); // call on change
+    tfBuffer._addTransformsChangedListener(boost::bind(&ComMediator::tfCallback, this)); // call on change
 
-    ropod_commands_pub = nh.advertise<ropod_ros_msgs::Task>("task", 1);
+    ropod_task_pub = nh.advertise<ropod_ros_msgs::Task>("task", 1);
     progress_goto_sub = nh.subscribe<ropod_ros_msgs::TaskProgressGOTO>("ropod_task_feedback/goto", 1,
                                         &ComMediator::progressGOTOCallback, this);
     progress_dock_sub = nh.subscribe<ropod_ros_msgs::TaskProgressDOCK>("ropod_task_feedback/dock", 1,
@@ -26,11 +26,13 @@ ComMediator::ComMediator()
                                         &ComMediator::elevatorRequestCallback, this);
     elevator_request_reply_pub = nh.advertise<ropod_ros_msgs::ElevatorRequestReply>("elevator_request_reply", 1);
 
+    // remote experiments
+    this->command_pub = nh.advertise<ropod_ros_msgs::ExecuteCommand>("/ropod/execute_command", 1);
+    this->command_feedback_sub = nh.subscribe<ropod_ros_msgs::CommandFeedback>("/ropod/cmd_feedback", 1,
+                                        &ComMediator::commandFeedbackCallback, this);
 }
 
-ComMediator::~ComMediator()
-{
-}
+ComMediator::~ComMediator() { }
 
 void ComMediator::recvMsgCallback(ZyreMsgContent *msgContent)
 {
@@ -43,22 +45,32 @@ void ComMediator::recvMsgCallback(ZyreMsgContent *msgContent)
         std::string errors;
         bool ok = Json::parseFromStream(json_builder, msg, &root, &errors);
 
-        Json::Value header = root["header"];
         if (root.isMember("header"))
         {
+            if (root["payload"]["robotId"] != robotName)
+            {
+                return;
+            }
+
             if (root["header"]["type"] == "TASK")
             {
-                parseAndPublishTaskMessage(root);
+                this->parseAndPublishTaskMessage(root);
             }
             else if (root["header"]["type"] == "ROBOT-ELEVATOR-CALL-REPLY")
             {
-                parseAndPublishElevatorReply(root);
+                this->parseAndPublishElevatorReply(root);
+            }
+            else if (root["header"]["type"] == "ROBOT-COMMAND-REQUEST")
+            {
+                this->parseAndPublishCommandMessage(root);
             }
         }
-
     }
 }
 
+///////////////////////
+// ROS to Zyre methods
+///////////////////////
 void ComMediator::progressGOTOCallback(const ropod_ros_msgs::TaskProgressGOTO::ConstPtr &ros_msg)
 {
     Json::Value msg;
@@ -149,81 +161,104 @@ void ComMediator::elevatorRequestCallback(const ropod_ros_msgs::ElevatorRequest:
 
 void ComMediator::tfCallback()
 {
-	ros::Duration maxTFCacheDuration = ros::Duration(10.0); // [s]
-	geometry_msgs::TransformStamped transform;
-	double roll,yaw,pitch;
-	try{
-		transform = tfBuffer.lookupTransform(tfFrameReferenceId, tfFrameId, ros::Time(0), ros::Duration(3.0));
-		tf2::Quaternion q;
-		q.setX(transform.transform.rotation.x); // there is certainly a more elegant way than this ...
-		q.setY(transform.transform.rotation.y);
-		q.setZ(transform.transform.rotation.z);
-		q.setW(transform.transform.rotation.w);
-		tf2::Matrix3x3 m;
-		m.setRotation(q);
-		m.getRPY(roll,pitch, yaw);
-	}
-	catch (tf2::TransformException ex){
-		ROS_WARN("%s",ex.what());
-		return;
-	}
+    ros::Duration maxTFCacheDuration = ros::Duration(10.0); // [s]
+    geometry_msgs::TransformStamped transform;
+    double roll,yaw,pitch;
+    try
+    {
+        transform = tfBuffer.lookupTransform(tfFrameReferenceId, tfFrameId, ros::Time(0), ros::Duration(3.0));
+        tf2::Quaternion q;
+        q.setX(transform.transform.rotation.x); // there is certainly a more elegant way than this ...
+        q.setY(transform.transform.rotation.y);
+        q.setZ(transform.transform.rotation.z);
+        q.setW(transform.transform.rotation.w);
+        tf2::Matrix3x3 m;
+        m.setRotation(q);
+        m.getRPY(roll,pitch, yaw);
+    }
+    catch (tf2::TransformException ex)
+    {
+        ROS_WARN("%s",ex.what());
+        return;
+    }
 
-	if ( (ros::Time::now() - transform.header.stamp) > maxTFCacheDuration ) { //simply ignore outdated TF frames
-		ROS_WARN("TF found for %s. But it is outdated. Skipping it.", tfFrameId.c_str());
-		return;
-	}
-	ROS_DEBUG("TF found for %s.", tfFrameId.c_str());
-
-
-	if (ros::Time::now() - lastSend > ros::Duration(minSendDurationInSec)) { // throttld down pose messages
-		ROS_DEBUG("Sending Zyre message.");
-
-		/* Convert to JSON Message */
-		Json::Value msg;
-	//	{
-	//	  "header":{
-	//	    "type":"RobotPose2D",
-	//	    "metamodel":"ropod-msg-schema.json",
-	//	    "msg_id":"5073dcfb-4849-42cd-a17a-ef33fa7c7a69"
-	//	  },
-	//	  "payload":{
-	//	    "metamodel":"ropod-demo-robot-pose-2d-schema.json",
-	//	    "robotId":"ropod_0",
-	//	    "pose":{
-	//	      "referenceId":"basement_map",
-	//	      "x":10,
-	//	      "y":20,
-	//	      "theta":3.1415
-	//	    }
-	//	  }
-	//	}
-		msg["header"]["type"] = "RobotPose2D";
-		msg["header"]["metamodel"] = "ropod-msg-schema.json";
-		zuuid_t * uuid = zuuid_new();
-		const char * uuid_str = zuuid_str_canonical(uuid);
-		msg["header"]["msg_id"] = uuid_str;
-		zuuid_destroy (&uuid);
-		//int64_t now = zclock_time();
-		char *timestr = zclock_timestr (); // TODO: this is not ISO 8601
-		msg["header"]["timestamp"] = timestr;
-		zstr_free(&timestr);
+    if ( (ros::Time::now() - transform.header.stamp) > maxTFCacheDuration )
+    { //simply ignore outdated TF frames
+        ROS_WARN("TF found for %s. But it is outdated. Skipping it.", tfFrameId.c_str());
+        return;
+    }
+    ROS_DEBUG("TF found for %s.", tfFrameId.c_str());
 
 
-		msg["payload"]["metamodel"] = "ropod-demo-robot-pose-2d-schema.json";
-		msg["payload"]["robotId"] = robotName;
-		msg["payload"]["pose"]["referenceId"] = tfFrameReferenceId;
-		msg["payload"]["pose"]["x"] = transform.transform.translation.x;
-		msg["payload"]["pose"]["y"] = transform.transform.translation.y;
-		msg["payload"]["pose"]["theta"] = yaw;
+    if (ros::Time::now() - lastSend > ros::Duration(minSendDurationInSec))
+    { // throttld down pose messages
+        ROS_DEBUG("Sending Zyre message.");
 
-		std::stringstream poseMsg("");
-		poseMsg << msg;
+        /* Convert to JSON Message */
+        Json::Value msg;
+    //	{
+    //	  "header":{
+    //	    "type":"RobotPose2D",
+    //	    "metamodel":"ropod-msg-schema.json",
+    //	    "msg_id":"5073dcfb-4849-42cd-a17a-ef33fa7c7a69"
+    //	  },
+    //	  "payload":{
+    //	    "metamodel":"ropod-demo-robot-pose-2d-schema.json",
+    //	    "robotId":"ropod_0",
+    //	    "pose":{
+    //	      "referenceId":"basement_map",
+    //	      "x":10,
+    //	      "y":20,
+    //	      "theta":3.1415
+    //	    }
+    //	  }
+    //	}
+        msg["header"]["type"] = "RobotPose2D";
+        msg["header"]["metamodel"] = "ropod-msg-schema.json";
+        msg["header"]["msg_id"] = this->generateUUID();
+
+        char *timestr = zclock_timestr (); // TODO: this is not ISO 8601
+        msg["header"]["timestamp"] = timestr;
+        zstr_free(&timestr);
+
+        msg["payload"]["metamodel"] = "ropod-demo-robot-pose-2d-schema.json";
+        msg["payload"]["robotId"] = robotName;
+        msg["payload"]["pose"]["referenceId"] = tfFrameReferenceId;
+        msg["payload"]["pose"]["x"] = transform.transform.translation.x;
+        msg["payload"]["pose"]["y"] = transform.transform.translation.y;
+        msg["payload"]["pose"]["theta"] = yaw;
+
+        std::stringstream poseMsg("");
+        poseMsg << msg;
         this->shout(poseMsg.str());
-		lastSend = ros::Time::now();
-	}
-
+        lastSend = ros::Time::now();
+    }
 }
 
+void ComMediator::commandFeedbackCallback(const ropod_ros_msgs::CommandFeedback::ConstPtr &ros_msg)
+{
+    Json::Value msg;
+    msg["header"]["type"] = "ROBOT-COMMAND-FEEDBACK";
+    msg["header"]["metamodel"] = "ropod-msg-schema.json";
+    msg["header"]["msg_id"] = this->generateUUID();
+
+    char *timestr = zclock_timestr (); // TODO: this is not ISO 8601
+    msg["header"]["timestamp"] = timestr;
+    zstr_free(&timestr);
+
+    msg["payload"]["metamodel"] = "ropod-command-feedback-schema.json";
+    msg["payload"]["robotId"] = robotName;
+    msg["payload"]["command"] = ros_msg->command_name;
+    msg["payload"]["state"] = ros_msg->state;
+
+    std::stringstream jsonMsg("");
+    jsonMsg << msg;
+    this->shout(jsonMsg.str(), zyreGroupName);
+}
+
+///////////////////////
+// Zyre to ROS methods
+///////////////////////
 void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
 {
     ropod_ros_msgs::Task task;
@@ -293,7 +328,7 @@ void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
         }
         task.robot_actions.push_back(action);
     }
-    ropod_commands_pub.publish(task);
+    ropod_task_pub.publish(task);
 
 }
 
@@ -307,12 +342,17 @@ void ComMediator::parseAndPublishElevatorReply(const Json::Value &root)
     elevator_request_reply_pub.publish(reply);
 }
 
+void ComMediator::parseAndPublishCommandMessage(const Json::Value &root)
+{
+    ropod_ros_msgs::ExecuteCommand cmd_msg;
+    cmd_msg.command_name = root["payload"]["command"].asString();
+    this->command_pub.publish(cmd_msg);
+}
+
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "ropod_com_mediator");
-
     ComMediator com_mediator;
-
 
     ros::NodeHandle nh("~");
     double loop_rate = 10.0;
@@ -320,7 +360,7 @@ int main(int argc, char **argv)
     ros::Rate r(loop_rate);
     while (ros::ok() && !zsys_interrupted)
     {
-	    ros::spinOnce();
+        ros::spinOnce();
         r.sleep();
     }
 	return 0;
