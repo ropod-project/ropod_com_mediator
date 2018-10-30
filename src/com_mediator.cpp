@@ -353,7 +353,7 @@ void ComMediator::parseAndPublishExperimentMessage(const Json::Value &root)
 
 int main(int argc, char **argv)
 {
-	ros::init(argc, argv, "ropod_com_mediator");
+    ros::init(argc, argv, "ropod_com_mediator");
     ComMediator com_mediator;
 
     ros::NodeHandle nh("~");
