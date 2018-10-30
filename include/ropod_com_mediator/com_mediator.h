@@ -29,6 +29,7 @@
 /* Remote experiment messages */
 #include <ropod_ros_msgs/ExecuteExperiment.h>
 #include <ropod_ros_msgs/CommandFeedback.h>
+#include <ropod_ros_msgs/ExperimentFeedback.h>
 
 class ComMediator : ZyreBaseCommunicator
 {
@@ -45,6 +46,7 @@ private:
     // remote experiments
     ros::Publisher experiment_pub;
     ros::Subscriber command_feedback_sub;
+    ros::Subscriber experiment_feedback_sub;
 
     tf2_ros::Buffer tfBuffer;
     tf2_ros::TransformListener tfListener;
@@ -75,6 +77,7 @@ public:
 
     // remote experiments
     void commandFeedbackCallback(const ropod_ros_msgs::CommandFeedback::ConstPtr &ros_msg);
+    void experimentFeedbackCallback(const ropod_ros_msgs::ExperimentFeedback::ConstPtr &ros_msg);
 
     void tfCallback();
 };

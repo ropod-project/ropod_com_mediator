@@ -30,6 +30,8 @@ ComMediator::ComMediator()
     this->experiment_pub = nh.advertise<ropod_ros_msgs::ExecuteExperiment>("/ropod/execute_experiment", 1);
     this->command_feedback_sub = nh.subscribe<ropod_ros_msgs::CommandFeedback>("/ropod/cmd_feedback", 1,
                                         &ComMediator::commandFeedbackCallback, this);
+    this->experiment_feedback_sub = nh.subscribe<ropod_ros_msgs::ExperimentFeedback>("/ropod/experiment_feedback", 1,
+                                        &ComMediator::experimentFeedbackCallback, this);
 }
 
 ComMediator::~ComMediator() { }
@@ -247,9 +249,30 @@ void ComMediator::commandFeedbackCallback(const ropod_ros_msgs::CommandFeedback:
     zstr_free(&timestr);
 
     msg["payload"]["metamodel"] = "ropod-command-feedback-schema.json";
-    msg["payload"]["robotId"] = robotName;
+    msg["payload"]["robotId"] = this->robotName;
     msg["payload"]["command"] = ros_msg->command_name;
     msg["payload"]["state"] = ros_msg->state;
+
+    std::stringstream jsonMsg("");
+    jsonMsg << msg;
+    this->shout(jsonMsg.str(), zyreGroupName);
+}
+
+void ComMediator::experimentFeedbackCallback(const ropod_ros_msgs::ExperimentFeedback::ConstPtr &ros_msg)
+{
+    Json::Value msg;
+    msg["header"]["type"] = "ROBOT-EXPERIMENT-FEEDBACK";
+    msg["header"]["metamodel"] = "ropod-msg-schema.json";
+    msg["header"]["msg_id"] = this->generateUUID();
+
+    char *timestr = zclock_timestr (); // TODO: this is not ISO 8601
+    msg["header"]["timestamp"] = timestr;
+    zstr_free(&timestr);
+
+    msg["payload"]["metamodel"] = "ropod-experiment-feedback-schema.json";
+    msg["payload"]["robotId"] = this->robotName;
+    msg["payload"]["experimentType"] = ros_msg->experiment_type;
+    msg["payload"]["result"] = ros_msg->result;
 
     std::stringstream jsonMsg("");
     jsonMsg << msg;
