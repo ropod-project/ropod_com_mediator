@@ -243,10 +243,7 @@ void ComMediator::commandFeedbackCallback(const ropod_ros_msgs::CommandFeedback:
     msg["header"]["type"] = "ROBOT-COMMAND-FEEDBACK";
     msg["header"]["metamodel"] = "ropod-msg-schema.json";
     msg["header"]["msg_id"] = this->generateUUID();
-
-    char *timestr = zclock_timestr (); // TODO: this is not ISO 8601
-    msg["header"]["timestamp"] = timestr;
-    zstr_free(&timestr);
+    msg["header"]["timestamp"] = ros_msg->stamp.toSec();
 
     msg["payload"]["metamodel"] = "ropod-command-feedback-schema.json";
     msg["payload"]["robotId"] = this->robotName;
@@ -264,10 +261,7 @@ void ComMediator::experimentFeedbackCallback(const ropod_ros_msgs::ExperimentFee
     msg["header"]["type"] = "ROBOT-EXPERIMENT-FEEDBACK";
     msg["header"]["metamodel"] = "ropod-msg-schema.json";
     msg["header"]["msg_id"] = this->generateUUID();
-
-    char *timestr = zclock_timestr (); // TODO: this is not ISO 8601
-    msg["header"]["timestamp"] = timestr;
-    zstr_free(&timestr);
+    msg["header"]["timestamp"] = ros_msg->stamp.toSec();
 
     msg["payload"]["metamodel"] = "ropod-experiment-feedback-schema.json";
     msg["payload"]["robotId"] = this->robotName;
