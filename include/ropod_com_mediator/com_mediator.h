@@ -31,10 +31,19 @@
 #include <ropod_ros_msgs/CommandFeedback.h>
 #include <ropod_ros_msgs/ExperimentFeedback.h>
 
-class ComMediator : ZyreBaseCommunicator
+#include <ftsm_base.h>
+
+
+using namespace ftsm;
+
+
+class ComMediator : public FTSMBase, public ZyreBaseCommunicator
 {
 private:
-    ros::NodeHandle nh;
+    int argc;
+    char **argv;
+    std::shared_ptr<ros::NodeHandle> nh;
+    std::shared_ptr<ros::Rate> rate;
 
     // task execution
     ros::Publisher ropod_task_pub;
@@ -49,7 +58,7 @@ private:
     ros::Subscriber experiment_feedback_sub;
 
     tf2_ros::Buffer tfBuffer;
-    tf2_ros::TransformListener tfListener;
+    std::shared_ptr<tf2_ros::TransformListener> tfListener;
 
     Json::CharReaderBuilder json_builder;
 
@@ -64,8 +73,12 @@ private:
     void parseAndPublishElevatorReply(const Json::Value &root);
     void parseAndPublishExperimentMessage(const Json::Value &root);
 
+    void startNode();
+    void createSubcribersPublishers();
+    void stopNode();
+
 public:
-    ComMediator();
+    ComMediator(int argc, char**argv);
     virtual ~ComMediator();
 
     virtual void recvMsgCallback(ZyreMsgContent *msgContent);
@@ -80,6 +93,13 @@ public:
     void experimentFeedbackCallback(const ropod_ros_msgs::ExperimentFeedback::ConstPtr &ros_msg);
 
     void tfCallback();
+
+
+    std::string init();
+    std::string configuring();
+    std::string ready();
+    std::string running();
+    std::string recovering();
 };
 
 #endif /* COM_MEDIATOR_H */

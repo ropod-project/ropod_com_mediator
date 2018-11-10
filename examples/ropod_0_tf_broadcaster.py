@@ -23,6 +23,6 @@ if __name__ == '__main__':
         br.sendTransform((1.0 * math.sin(t), 2.0 * math.cos(t), (0.1 * math.sin(2*t))+ 0.2),
                          q,			
                          rospy.Time.now(),
-                         "base_link", # child
+                         "ropod/base_link", # child
                          "map")   # parent
         rate.sleep()    	
