@@ -22,6 +22,7 @@ std::string ComMediator::init()
 {
     this->startNode();
     this->createSubcribersPublishers();
+    this->loadParameters();
     return FTSMTransitions::INITIALISED;
 }
 
@@ -59,6 +60,13 @@ void ComMediator::createSubcribersPublishers()
     this->experiment_feedback_sub = nh->subscribe<ropod_ros_msgs::ExperimentFeedback>("/ropod/experiment_feedback", 1,
                                         &ComMediator::experimentFeedbackCallback, this);
 
+    lastSend = ros::Time::now();
+    tfListener.reset(new tf2_ros::TransformListener(tfBuffer));
+    tfBuffer._addTransformsChangedListener(boost::bind(&ComMediator::tfCallback, this)); // call on change
+}
+
+void ComMediator::loadParameters()
+{
     nh->param<std::string>("tfFrameId", tfFrameId, "base_link");
     nh->param<std::string>("tfFrameReferenceId", tfFrameReferenceId, "map");
     nh->param<std::string>("robotName", robotName, "ropod_1");
@@ -67,9 +75,6 @@ void ComMediator::createSubcribersPublishers()
     double loop_rate;
     nh->param<double>("loop_rate", loop_rate, 10.0);
     rate.reset(new ros::Rate(loop_rate));
-    lastSend = ros::Time::now();
-    tfListener.reset(new tf2_ros::TransformListener(tfBuffer));
-    tfBuffer._addTransformsChangedListener(boost::bind(&ComMediator::tfCallback, this)); // call on change
 }
 
 void ComMediator::stopNode()

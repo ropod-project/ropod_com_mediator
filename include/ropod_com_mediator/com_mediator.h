@@ -74,6 +74,7 @@ private:
     void parseAndPublishExperimentMessage(const Json::Value &root);
 
     void startNode();
+    void loadParameters();
     void createSubcribersPublishers();
     void stopNode();
 
