@@ -4,7 +4,7 @@
 #include <thread>
 #include <csignal>
 
-std::shared_ptr<ComMediator> com_mediator;
+bool nodeKilled = false;
 
 ComMediator::ComMediator(int argc, char **argv)
     : FTSMBase("com_mediator", {"roscore"}),
@@ -42,18 +42,6 @@ void ComMediator::startNode()
 
 void ComMediator::createSubcribersPublishers()
 {
-    nh->param<std::string>("tfFrameId", tfFrameId, "base_link");
-    nh->param<std::string>("tfFrameReferenceId", tfFrameReferenceId, "map");
-    nh->param<std::string>("robotName", robotName, "ropod_1");
-    nh->param<double>("minSendDurationInSec", minSendDurationInSec, 1.0);
-    nh->param<std::string>("zyreGroupName", zyreGroupName, "ROPOD");
-    double loop_rate;
-    nh->param<double>("loop_rate", loop_rate, 10.0);
-    rate.reset(new ros::Rate(loop_rate));
-    lastSend = ros::Time::now();
-    tfListener.reset(new tf2_ros::TransformListener(tfBuffer));
-    tfBuffer._addTransformsChangedListener(boost::bind(&ComMediator::tfCallback, this)); // call on change
-
     ropod_task_pub = nh->advertise<ropod_ros_msgs::Task>("task", 1);
     progress_goto_sub = nh->subscribe<ropod_ros_msgs::TaskProgressGOTO>("ropod_task_feedback/goto", 1,
                                         &ComMediator::progressGOTOCallback, this);
@@ -70,6 +58,18 @@ void ComMediator::createSubcribersPublishers()
                                         &ComMediator::commandFeedbackCallback, this);
     this->experiment_feedback_sub = nh->subscribe<ropod_ros_msgs::ExperimentFeedback>("/ropod/experiment_feedback", 1,
                                         &ComMediator::experimentFeedbackCallback, this);
+
+    nh->param<std::string>("tfFrameId", tfFrameId, "base_link");
+    nh->param<std::string>("tfFrameReferenceId", tfFrameReferenceId, "map");
+    nh->param<std::string>("robotName", robotName, "ropod_1");
+    nh->param<double>("minSendDurationInSec", minSendDurationInSec, 1.0);
+    nh->param<std::string>("zyreGroupName", zyreGroupName, "ROPOD");
+    double loop_rate;
+    nh->param<double>("loop_rate", loop_rate, 10.0);
+    rate.reset(new ros::Rate(loop_rate));
+    lastSend = ros::Time::now();
+    tfListener.reset(new tf2_ros::TransformListener(tfBuffer));
+    tfBuffer._addTransformsChangedListener(boost::bind(&ComMediator::tfCallback, this)); // call on change
 }
 
 void ComMediator::stopNode()
@@ -104,6 +104,7 @@ std::string ComMediator::recovering()
     this->stopNode();
     if (!ros::ok())
     {
+        nodeKilled = true;
         return FTSMTransitions::FAILED_RECOVERY;
     }
     this->startNode();
@@ -445,19 +446,18 @@ void ComMediator::parseAndPublishExperimentMessage(const Json::Value &root)
     this->experiment_pub.publish(experiment_msg);
 }
 
-void checkTermination(int signal)
-{
-    com_mediator->stop();
-}
-
 int main(int argc, char **argv)
 {
-    com_mediator.reset(new ComMediator(argc, argv));
-    com_mediator->run();
-    signal(SIGINT, checkTermination);
+    ComMediator com_mediator(argc, argv);
+    com_mediator.run();
     while(true)
     {
         std::this_thread::sleep_for(std::chrono::seconds(1));
+        if (nodeKilled)
+        {
+            com_mediator.stop();
+            break;
+        }
     }
 	return 0;
 }
