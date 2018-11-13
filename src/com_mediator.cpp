@@ -1,40 +1,122 @@
 #include <ropod_com_mediator/com_mediator.h>
 #include <sstream>
+#include <chrono>
+#include <thread>
+#include <csignal>
 
-ComMediator::ComMediator()
-    : ZyreBaseCommunicator("com_mediator",
+bool nodeKilled = false;
+
+ComMediator::ComMediator(int argc, char **argv)
+    : FTSMBase("com_mediator", {"roscore"}),
+    ZyreBaseCommunicator("com_mediator",
                            std::vector<std::string>{std::string("ROPOD")},
                            std::vector<std::string>{std::string("TASK")}, false),
-    nh("~"),
-    tfListener(tfBuffer)
+    argc(argc),
+    argv(argv)
 {
-    nh.param<std::string>("tfFrameId", tfFrameId, "base_link");
-    nh.param<std::string>("tfFrameReferenceId", tfFrameReferenceId, "map");
-    nh.param<std::string>("robotName", robotName, "ropod_1");
-    nh.param<double>("minSendDurationInSec", minSendDurationInSec, 1.0);
-    nh.param<std::string>("zyreGroupName", zyreGroupName, "ROPOD");
-    lastSend = ros::Time::now();
-    tfBuffer._addTransformsChangedListener(boost::bind(&ComMediator::tfCallback, this)); // call on change
-
-    ropod_task_pub = nh.advertise<ropod_ros_msgs::Task>("task", 1);
-    progress_goto_sub = nh.subscribe<ropod_ros_msgs::TaskProgressGOTO>("ropod_task_feedback/goto", 1,
-                                        &ComMediator::progressGOTOCallback, this);
-    progress_dock_sub = nh.subscribe<ropod_ros_msgs::TaskProgressDOCK>("ropod_task_feedback/dock", 1,
-                                        &ComMediator::progressDOCKCallback, this);
-
-    elevator_request_sub = nh.subscribe<ropod_ros_msgs::ElevatorRequest>("elevator_request", 1,
-                                        &ComMediator::elevatorRequestCallback, this);
-    elevator_request_reply_pub = nh.advertise<ropod_ros_msgs::ElevatorRequestReply>("elevator_request_reply", 1);
-
-    // remote experiments
-    this->experiment_pub = nh.advertise<ropod_ros_msgs::ExecuteExperiment>("/ropod/execute_experiment", 1);
-    this->command_feedback_sub = nh.subscribe<ropod_ros_msgs::CommandFeedback>("/ropod/cmd_feedback", 1,
-                                        &ComMediator::commandFeedbackCallback, this);
-    this->experiment_feedback_sub = nh.subscribe<ropod_ros_msgs::ExperimentFeedback>("/ropod/experiment_feedback", 1,
-                                        &ComMediator::experimentFeedbackCallback, this);
 }
 
 ComMediator::~ComMediator() { }
+
+std::string ComMediator::init()
+{
+    this->startNode();
+    this->createSubcribersPublishers();
+    this->loadParameters();
+    return FTSMTransitions::INITIALISED;
+}
+
+std::string ComMediator::configuring()
+{
+    return FTSMTransitions::DONE_CONFIGURING;
+}
+std::string ComMediator::ready()
+{
+    return FTSMTransitions::RUN;
+}
+
+void ComMediator::startNode()
+{
+    ros::init(argc, argv, "com_mediator");
+    nh.reset(new ros::NodeHandle("~"));
+}
+
+void ComMediator::createSubcribersPublishers()
+{
+    ropod_task_pub = nh->advertise<ropod_ros_msgs::Task>("task", 1);
+    progress_goto_sub = nh->subscribe<ropod_ros_msgs::TaskProgressGOTO>("ropod_task_feedback/goto", 1,
+                                        &ComMediator::progressGOTOCallback, this);
+    progress_dock_sub = nh->subscribe<ropod_ros_msgs::TaskProgressDOCK>("ropod_task_feedback/dock", 1,
+                                        &ComMediator::progressDOCKCallback, this);
+
+    elevator_request_sub = nh->subscribe<ropod_ros_msgs::ElevatorRequest>("elevator_request", 1,
+                                        &ComMediator::elevatorRequestCallback, this);
+    elevator_request_reply_pub = nh->advertise<ropod_ros_msgs::ElevatorRequestReply>("elevator_request_reply", 1);
+
+    // remote experiments
+    this->experiment_pub = nh->advertise<ropod_ros_msgs::ExecuteExperiment>("/ropod/execute_experiment", 1);
+    this->command_feedback_sub = nh->subscribe<ropod_ros_msgs::CommandFeedback>("/ropod/cmd_feedback", 1,
+                                        &ComMediator::commandFeedbackCallback, this);
+    this->experiment_feedback_sub = nh->subscribe<ropod_ros_msgs::ExperimentFeedback>("/ropod/experiment_feedback", 1,
+                                        &ComMediator::experimentFeedbackCallback, this);
+
+    lastSend = ros::Time::now();
+    tfListener.reset(new tf2_ros::TransformListener(tfBuffer));
+    tfBuffer._addTransformsChangedListener(boost::bind(&ComMediator::tfCallback, this)); // call on change
+}
+
+void ComMediator::loadParameters()
+{
+    nh->param<std::string>("tfFrameId", tfFrameId, "base_link");
+    nh->param<std::string>("tfFrameReferenceId", tfFrameReferenceId, "map");
+    nh->param<std::string>("robotName", robotName, "ropod_1");
+    nh->param<double>("minSendDurationInSec", minSendDurationInSec, 1.0);
+    nh->param<std::string>("zyreGroupName", zyreGroupName, "ROPOD");
+    double loop_rate;
+    nh->param<double>("loop_rate", loop_rate, 10.0);
+    rate.reset(new ros::Rate(loop_rate));
+}
+
+void ComMediator::stopNode()
+{
+    ropod_task_pub.shutdown();
+    progress_goto_sub.shutdown();
+    progress_dock_sub.shutdown();
+    elevator_request_sub.shutdown();
+    elevator_request_reply_pub.shutdown();
+    experiment_pub.shutdown();
+    command_feedback_sub.shutdown();
+    experiment_feedback_sub.shutdown();
+}
+
+std::string ComMediator::running()
+{
+    if(ros::ok() && !zsys_interrupted && ros::master::check())
+    {
+        ros::spinOnce();
+        rate->sleep();
+        return FTSMTransitions::CONTINUE;
+    }
+    else
+    {
+        return FTSMTransitions::RECOVER;
+    }
+
+}
+
+std::string ComMediator::recovering()
+{
+    this->stopNode();
+    if (!ros::ok())
+    {
+        nodeKilled = true;
+        return FTSMTransitions::FAILED_RECOVERY;
+    }
+    this->startNode();
+    ros::spinOnce();
+    this->createSubcribersPublishers();
+    return FTSMTransitions::DONE_RECOVERING;
+}
 
 void ComMediator::recvMsgCallback(ZyreMsgContent *msgContent)
 {
@@ -69,6 +151,7 @@ void ComMediator::recvMsgCallback(ZyreMsgContent *msgContent)
         }
     }
 }
+
 
 ///////////////////////
 // ROS to Zyre methods
@@ -370,17 +453,16 @@ void ComMediator::parseAndPublishExperimentMessage(const Json::Value &root)
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "ropod_com_mediator");
-    ComMediator com_mediator;
-
-    ros::NodeHandle nh("~");
-    double loop_rate = 10.0;
-    nh.param<double>("loop_rate", loop_rate, 10.0);
-    ros::Rate r(loop_rate);
-    while (ros::ok() && !zsys_interrupted)
+    ComMediator com_mediator(argc, argv);
+    com_mediator.run();
+    while(true)
     {
-        ros::spinOnce();
-        r.sleep();
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        if (nodeKilled)
+        {
+            com_mediator.stop();
+            break;
+        }
     }
 	return 0;
 }
