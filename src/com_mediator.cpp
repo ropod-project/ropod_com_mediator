@@ -305,7 +305,7 @@ void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
             for (int j = 0; j < areas.size(); j++)
             {
                 ropod_ros_msgs::Area area;
-                area.area_id = areas[j]["id"].asString();
+                area.id = areas[j]["id"].asString();
                 area.name = areas[j]["name"].asString();
                 area.type = areas[j]["type"].asString();
                 area.floor_number = areas[j]["floor_number"].asInt();
@@ -313,8 +313,8 @@ void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
                 for (int k = 0; k < wp.size(); k++)
                 {
                     ropod_ros_msgs::SubArea sub_area;
-                    sub_area.semantic_id = wp[k]["semantic_id"].asString();
-                    sub_area.area_id = wp[k]["area_id"].asString();
+                    sub_area.name = wp[k]["name"].asString();
+                    sub_area.id = wp[k]["id"].asString();
                     sub_area.floor_number = wp[k]["floor_number"].asInt();
                     sub_area.waypoint_pose.position.x = wp[k]["x"].asDouble();
                     sub_area.waypoint_pose.position.y = wp[k]["y"].asDouble();
@@ -327,8 +327,8 @@ void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
             for (int k = 0; k < wp.size(); k++)
             {
                 ropod_ros_msgs::SubArea sub_area;
-                sub_area.semantic_id = wp[k]["semantic_id"].asString();
-                sub_area.area_id = wp[k]["area_id"].asString();
+                sub_area.name = wp[k]["name"].asString();
+                sub_area.id = wp[k]["id"].asString();
                 sub_area.floor_number = wp[k]["floor_number"].asInt();
                 sub_area.waypoint_pose.position.x = wp[k]["x"].asInt();
                 sub_area.waypoint_pose.position.y = wp[k]["y"].asInt();
