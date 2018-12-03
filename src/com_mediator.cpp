@@ -388,35 +388,35 @@ void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
             for (int j = 0; j < areas.size(); j++)
             {
                 ropod_ros_msgs::Area area;
-                area.area_id = areas[j]["id"].asString();
+                area.id = areas[j]["id"].asString();
                 area.name = areas[j]["name"].asString();
                 area.type = areas[j]["type"].asString();
                 area.floor_number = areas[j]["floor_number"].asInt();
-                const Json::Value &wp = areas[j]["waypoints"];
+                const Json::Value &wp = areas[j]["sub_areas"];
                 for (int k = 0; k < wp.size(); k++)
                 {
-                    ropod_ros_msgs::Waypoint waypoint;
-                    waypoint.semantic_id = wp[k]["semantic_id"].asString();
-                    waypoint.area_id = wp[k]["area_id"].asString();
-                    waypoint.floor_number = wp[k]["floor_number"].asInt();
-                    waypoint.waypoint_pose.position.x = wp[k]["x"].asDouble();
-                    waypoint.waypoint_pose.position.y = wp[k]["y"].asDouble();
-                    waypoint.waypoint_pose.orientation.w = 1.0;
-                    area.waypoints.push_back(waypoint);
+                    ropod_ros_msgs::SubArea sub_area;
+                    sub_area.name = wp[k]["name"].asString();
+                    sub_area.id = wp[k]["id"].asString();
+                    sub_area.floor_number = wp[k]["floor_number"].asInt();
+                    sub_area.waypoint_pose.position.x = wp[k]["x"].asDouble();
+                    sub_area.waypoint_pose.position.y = wp[k]["y"].asDouble();
+                    sub_area.waypoint_pose.orientation.w = 1.0;
+                    area.sub_areas.push_back(sub_area);
                 }
                 action.areas.push_back(area);
             }
-            const Json::Value &wp = action_list[i]["waypoints"];
+            const Json::Value &wp = action_list[i]["sub_areas"];
             for (int k = 0; k < wp.size(); k++)
             {
-                ropod_ros_msgs::Waypoint waypoint;
-                waypoint.semantic_id = wp[k]["semantic_id"].asString();
-                waypoint.area_id = wp[k]["area_id"].asString();
-                waypoint.floor_number = wp[k]["floor_number"].asInt();
-                waypoint.waypoint_pose.position.x = wp[k]["x"].asInt();
-                waypoint.waypoint_pose.position.y = wp[k]["y"].asInt();
-                waypoint.waypoint_pose.orientation.w = 1.0;
-                action.waypoints.push_back(waypoint);
+                ropod_ros_msgs::SubArea sub_area;
+                sub_area.name = wp[k]["name"].asString();
+                sub_area.id = wp[k]["id"].asString();
+                sub_area.floor_number = wp[k]["floor_number"].asInt();
+                sub_area.waypoint_pose.position.x = wp[k]["x"].asInt();
+                sub_area.waypoint_pose.position.y = wp[k]["y"].asInt();
+                sub_area.waypoint_pose.orientation.w = 1.0;
+                action.sub_areas.push_back(sub_area);
             }
         }
         else if (action.type == "REQUEST_ELEVATOR")
