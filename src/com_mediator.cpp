@@ -10,10 +10,18 @@ ComMediator::ComMediator(int argc, char **argv)
     : FTSMBase("com_mediator", {"roscore"}),
     ZyreBaseCommunicator("com_mediator",
                            std::vector<std::string>{std::string("ROPOD")},
-                           std::vector<std::string>{std::string("TASK")}, false),
+                           std::vector<std::string>{std::string("TASK")}, false, "", true),
     argc(argc),
     argv(argv)
 {
+    std::vector<std::string> sendAcknowledgementFor;
+    sendAcknowledgementFor.push_back("TASK");
+    sendAcknowledgementFor.push_back("ROBOT-EXPERIMENT-REQUEST");
+    this->setSendAcknowledgementFor(sendAcknowledgementFor);
+
+    std::vector<std::string> expectAcknowledgementFor;
+    expectAcknowledgementFor.push_back("ROBOT-ELEVATOR-CALL-REQUEST");
+    this->setExpectAcknowledgementFor(expectAcknowledgementFor);
 }
 
 ComMediator::~ComMediator() { }
@@ -152,6 +160,16 @@ void ComMediator::recvMsgCallback(ZyreMsgContent *msgContent)
     }
 }
 
+void ComMediator::sendMessageStatusCallback(const std::string &msgId, bool status)
+{
+    if (status)
+        ROS_INFO_STREAM("Sending message: " << msgId << " succeeded");
+    else
+        ROS_ERROR_STREAM("Sending message: " << msgId << " succeeded");
+
+    // TODO: what to do here if sending a message fails?
+    // need to call some sort of recovery action
+}
 
 ///////////////////////
 // ROS to Zyre methods
@@ -162,7 +180,7 @@ void ComMediator::progressGOTOCallback(const ropod_ros_msgs::TaskProgressGOTO::C
 
     msg["header"]["type"] = "TASK-PROGRESS";
     msg["header"]["metamodel"] = "ropod-msg-schema.json";
-    msg["header"]["msg_id"] = generateUUID();
+    msg["header"]["msgId"] = generateUUID();
     msg["header"]["timestamp"] = getTimeStamp();
 
     msg["payload"]["metamodel"] = "ropod-demo-progress-schema.json";
@@ -191,7 +209,7 @@ void ComMediator::progressDOCKCallback(const ropod_ros_msgs::TaskProgressDOCK::C
     msg["header"]["metamodel"] = "ropod-msg-schema.json";
     zuuid_t * uuid = zuuid_new();
     const char * uuid_str = zuuid_str_canonical(uuid);
-    msg["header"]["msg_id"] = uuid_str;
+    msg["header"]["msgId"] = uuid_str;
     zuuid_destroy (&uuid);
     //int64_t now = zclock_time();
     char *timestr = zclock_timestr (); // TODO: this is not ISO 8601
@@ -222,7 +240,7 @@ void ComMediator::elevatorRequestCallback(const ropod_ros_msgs::ElevatorRequest:
     msg["header"]["metamodel"] = "ropod-msg-schema.json";
     zuuid_t * uuid = zuuid_new();
     const char * uuid_str = zuuid_str_canonical(uuid);
-    msg["header"]["msg_id"] = uuid_str;
+    msg["header"]["msgId"] = uuid_str;
     zuuid_destroy (&uuid);
     //int64_t now = zclock_time();
     char *timestr = zclock_timestr (); // TODO: this is not ISO 8601
@@ -285,7 +303,7 @@ void ComMediator::tfCallback()
     //	  "header":{
     //	    "type":"RobotPose2D",
     //	    "metamodel":"ropod-msg-schema.json",
-    //	    "msg_id":"5073dcfb-4849-42cd-a17a-ef33fa7c7a69"
+    //	    "msgId":"5073dcfb-4849-42cd-a17a-ef33fa7c7a69"
     //	  },
     //	  "payload":{
     //	    "metamodel":"ropod-demo-robot-pose-2d-schema.json",
@@ -300,7 +318,7 @@ void ComMediator::tfCallback()
     //	}
         msg["header"]["type"] = "RobotPose2D";
         msg["header"]["metamodel"] = "ropod-msg-schema.json";
-        msg["header"]["msg_id"] = this->generateUUID();
+        msg["header"]["msgId"] = this->generateUUID();
 
         char *timestr = zclock_timestr (); // TODO: this is not ISO 8601
         msg["header"]["timestamp"] = timestr;
@@ -325,7 +343,7 @@ void ComMediator::commandFeedbackCallback(const ropod_ros_msgs::CommandFeedback:
     Json::Value msg;
     msg["header"]["type"] = "ROBOT-COMMAND-FEEDBACK";
     msg["header"]["metamodel"] = "ropod-msg-schema.json";
-    msg["header"]["msg_id"] = this->generateUUID();
+    msg["header"]["msgId"] = this->generateUUID();
     msg["header"]["timestamp"] = ros_msg->stamp.toSec();
 
     msg["payload"]["metamodel"] = "ropod-command-feedback-schema.json";
@@ -343,7 +361,7 @@ void ComMediator::experimentFeedbackCallback(const ropod_ros_msgs::ExperimentFee
     Json::Value msg;
     msg["header"]["type"] = "ROBOT-EXPERIMENT-FEEDBACK";
     msg["header"]["metamodel"] = "ropod-msg-schema.json";
-    msg["header"]["msg_id"] = this->generateUUID();
+    msg["header"]["msgId"] = this->generateUUID();
     msg["header"]["timestamp"] = ros_msg->stamp.toSec();
 
     msg["payload"]["metamodel"] = "ropod-experiment-feedback-schema.json";
