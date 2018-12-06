@@ -83,7 +83,7 @@ public:
     virtual ~ComMediator();
 
     virtual void recvMsgCallback(ZyreMsgContent *msgContent);
-    virtual void sendMessageStatusCallback(const std::string &msgId, bool status);
+    virtual void sendMessageStatus(const std::string &msgId, bool status);
 
     // task execution
     void progressGOTOCallback(const ropod_ros_msgs::TaskProgressGOTO::ConstPtr &ros_msg);

@@ -160,7 +160,7 @@ void ComMediator::recvMsgCallback(ZyreMsgContent *msgContent)
     }
 }
 
-void ComMediator::sendMessageStatusCallback(const std::string &msgId, bool status)
+void ComMediator::sendMessageStatus(const std::string &msgId, bool status)
 {
     if (status)
         ROS_INFO_STREAM("Sending message: " << msgId << " succeeded");
