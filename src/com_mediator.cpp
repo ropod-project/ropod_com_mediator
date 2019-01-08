@@ -6,11 +6,24 @@
 
 bool nodeKilled = false;
 
+std::string getEnv(const std::string &var)
+{
+    char const* value = std::getenv(var.c_str());
+    if (value == NULL)
+    {
+        std::cerr << "Warning: environment variable " << var << " not set!" << std::endl;
+        return std::string();
+    }
+    else
+    {
+        return std::string(value);
+    }
+}
+
 ComMediator::ComMediator(int argc, char **argv)
     : FTSMBase("com_mediator", {"roscore"}),
-    ZyreBaseCommunicator("com_mediator",
-                           std::vector<std::string>{std::string("ROPOD")},
-                           std::vector<std::string>{std::string("TASK")}, false, "", true),
+    ZyreBaseCommunicator(getEnv("ROPOD_ID") + std::string("_com_mediator"),
+                         false, "", true, false), // print msgs, network interface, acknowledge, startImmediately
     argc(argc),
     argv(argv)
 {
@@ -22,12 +35,21 @@ ComMediator::ComMediator(int argc, char **argv)
     std::vector<std::string> expectAcknowledgementFor;
     expectAcknowledgementFor.push_back("ROBOT-ELEVATOR-CALL-REQUEST");
     this->setExpectAcknowledgementFor(expectAcknowledgementFor);
+
+    robotName = getEnv("ROPOD_ID");
+    std::map<std::string, std::string> headers;
+    headers["name"] = robotName + std::string("_com_mediator");
+    this->setHeaders(headers);
+
+    // start zyre node
+    this->startZyreNode();
 }
 
 ComMediator::~ComMediator() { }
 
 std::string ComMediator::init()
 {
+    // start ROS node
     this->startNode();
     this->createSubcribersPublishers();
     this->loadParameters();
@@ -77,12 +99,16 @@ void ComMediator::loadParameters()
 {
     nh->param<std::string>("tfFrameId", tfFrameId, "base_link");
     nh->param<std::string>("tfFrameReferenceId", tfFrameReferenceId, "map");
-    nh->param<std::string>("robotName", robotName, "ropod_1");
+    if (robotName.empty())
+    {
+        nh->param<std::string>("robotName", robotName, "ropod_1");
+    }
     nh->param<double>("minSendDurationInSec", minSendDurationInSec, 1.0);
     nh->param<std::string>("zyreGroupName", zyreGroupName, "ROPOD");
     double loop_rate;
     nh->param<double>("loop_rate", loop_rate, 10.0);
     rate.reset(new ros::Rate(loop_rate));
+    this->joinGroup(zyreGroupName);
 }
 
 void ComMediator::stopNode()
@@ -165,7 +191,7 @@ void ComMediator::sendMessageStatus(const std::string &msgId, bool status)
     if (status)
         ROS_INFO_STREAM("Sending message: " << msgId << " succeeded");
     else
-        ROS_ERROR_STREAM("Sending message: " << msgId << " succeeded");
+        ROS_ERROR_STREAM("Sending message: " << msgId << " failed");
 
     // TODO: what to do here if sending a message fails?
     // need to call some sort of recovery action
@@ -245,6 +271,9 @@ void ComMediator::elevatorRequestCallback(const ropod_ros_msgs::ElevatorRequest:
     //int64_t now = zclock_time();
     char *timestr = zclock_timestr (); // TODO: this is not ISO 8601
     msg["header"]["timestamp"] = timestr;
+    Json::Value receiverIds;
+    receiverIds.append("resource_manager");
+    msg["header"]["receiverIds"] = receiverIds;
     zstr_free(&timestr);
 
 
