@@ -165,7 +165,7 @@ void ComMediator::recvMsgCallback(ZyreMsgContent *msgContent)
 
         if (root.isMember("header"))
         {
-            if (root["payload"]["robotId"] != robotName)
+            if (root["header"]["robotId"] != robotName)
             {
                 return;
             }
@@ -438,14 +438,14 @@ void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
                 area.id = areas[j]["id"].asString();
                 area.name = areas[j]["name"].asString();
                 area.type = areas[j]["type"].asString();
-                area.floor_number = areas[j]["floor_number"].asInt();
-                const Json::Value &wp = areas[j]["sub_areas"];
+                area.floor_number = areas[j]["floorNumber"].asInt();
+                const Json::Value &wp = areas[j]["subAreas"];
                 for (int k = 0; k < wp.size(); k++)
                 {
                     ropod_ros_msgs::SubArea sub_area;
                     sub_area.name = wp[k]["name"].asString();
                     sub_area.id = wp[k]["id"].asString();
-                    sub_area.floor_number = wp[k]["floor_number"].asInt();
+                    sub_area.floor_number = wp[k]["floorNumber"].asInt();
                     sub_area.waypoint_pose.position.x = wp[k]["x"].asDouble();
                     sub_area.waypoint_pose.position.y = wp[k]["y"].asDouble();
                     sub_area.waypoint_pose.orientation.w = 1.0;
@@ -453,13 +453,13 @@ void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
                 }
                 action.areas.push_back(area);
             }
-            const Json::Value &wp = action_list[i]["sub_areas"];
+            const Json::Value &wp = action_list[i]["subAreas"];
             for (int k = 0; k < wp.size(); k++)
             {
                 ropod_ros_msgs::SubArea sub_area;
                 sub_area.name = wp[k]["name"].asString();
                 sub_area.id = wp[k]["id"].asString();
-                sub_area.floor_number = wp[k]["floor_number"].asInt();
+                sub_area.floor_number = wp[k]["floorNumber"].asInt();
                 sub_area.waypoint_pose.position.x = wp[k]["x"].asInt();
                 sub_area.waypoint_pose.position.y = wp[k]["y"].asInt();
                 sub_area.waypoint_pose.orientation.w = 1.0;
@@ -475,6 +475,7 @@ void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
         }
         task.robot_actions.push_back(action);
     }
+
     ropod_task_pub.publish(task);
 
 }
