@@ -486,7 +486,7 @@ void ComMediator::parseAndPublishElevatorReply(const Json::Value &root)
     reply.query_id = root["payload"]["queryId"].asString();
     reply.query_success = root["payload"]["querySuccess"].asBool();
     reply.elevator_id = root["payload"]["elevatorId"].asInt();
-    reply.elevator_waypoint = root["payload"]["elevatorWaypoint"].asString();
+    reply.elevator_door_id = root["payload"]["elevatorDoorId"].asInt();
     elevator_request_reply_pub.publish(reply);
 }
 
