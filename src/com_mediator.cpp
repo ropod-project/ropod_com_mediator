@@ -440,14 +440,7 @@ void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
             for (int j = 0; j < areas.size(); j++)
             {
                 ropod_ros_msgs::Area area;
-                // if an area_id is not specified, it appears as an empty string
-                try
-                {
-                    area.id = areas[j]["id"].asInt();
-                }
-                catch (std::exception &e)
-                {
-                }
+                area.id = areas[j]["id"].asString();
                 area.name = areas[j]["name"].asString();
                 area.type = areas[j]["type"].asString();
                 area.floor_number = areas[j]["floorNumber"].asInt();
@@ -456,7 +449,7 @@ void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
                 {
                     ropod_ros_msgs::SubArea sub_area;
                     sub_area.name = wp[k]["name"].asString();
-                    sub_area.id = wp[k]["id"].asInt();
+                    sub_area.id = wp[k]["id"].asString();
                     sub_area.type = wp[k]["type"].asString();
                     // if capacity is not specified, it appears as an empty string
                     try
