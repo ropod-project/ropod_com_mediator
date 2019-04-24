@@ -89,21 +89,15 @@ void ComMediator::createSubcribersPublishers()
                                         &ComMediator::commandFeedbackCallback, this);
     this->experiment_feedback_sub = nh->subscribe<ropod_ros_msgs::ExperimentFeedback>("/ropod/experiment_feedback", 1,
                                         &ComMediator::experimentFeedbackCallback, this);
-
-    lastSend = ros::Time::now();
-    tfListener.reset(new tf2_ros::TransformListener(tfBuffer));
-    tfBuffer._addTransformsChangedListener(boost::bind(&ComMediator::tfCallback, this)); // call on change
+    robot_pose_sub = nh->subscribe<geometry_msgs::PoseStamped>("robot_pose", 1, &ComMediator::robotPoseCallback, this);
 }
 
 void ComMediator::loadParameters()
 {
-    nh->param<std::string>("tfFrameId", tfFrameId, "base_link");
-    nh->param<std::string>("tfFrameReferenceId", tfFrameReferenceId, "map");
     if (robotName.empty())
     {
         nh->param<std::string>("robotName", robotName, "ropod_1");
     }
-    nh->param<double>("minSendDurationInSec", minSendDurationInSec, 1.0);
     nh->param<std::string>("zyreGroupName", zyreGroupName, "ROPOD");
     double loop_rate;
     nh->param<double>("loop_rate", loop_rate, 10.0);
@@ -291,80 +285,57 @@ void ComMediator::elevatorRequestCallback(const ropod_ros_msgs::ElevatorRequest:
     this->shout(jsonMsg.str(), zyreGroupName);
 }
 
-void ComMediator::tfCallback()
+void ComMediator::robotPoseCallback(const geometry_msgs::PoseStamped::ConstPtr &pose_msg)
 {
-    ros::Duration maxTFCacheDuration = ros::Duration(10.0); // [s]
-    geometry_msgs::TransformStamped transform;
     double roll,yaw,pitch;
-    try
-    {
-        transform = tfBuffer.lookupTransform(tfFrameReferenceId, tfFrameId, ros::Time(0), ros::Duration(3.0));
-        tf2::Quaternion q;
-        q.setX(transform.transform.rotation.x); // there is certainly a more elegant way than this ...
-        q.setY(transform.transform.rotation.y);
-        q.setZ(transform.transform.rotation.z);
-        q.setW(transform.transform.rotation.w);
-        tf2::Matrix3x3 m;
-        m.setRotation(q);
-        m.getRPY(roll,pitch, yaw);
-    }
-    catch (tf2::TransformException ex)
-    {
-        ROS_WARN("%s",ex.what());
-        return;
-    }
+    tf2::Quaternion q;
+    q.setX(pose_msg->pose.orientation.x); // there is certainly a more elegant way than this ...
+    q.setY(pose_msg->pose.orientation.y);
+    q.setZ(pose_msg->pose.orientation.z);
+    q.setW(pose_msg->pose.orientation.w);
+    tf2::Matrix3x3 m;
+    m.setRotation(q);
+    m.getRPY(roll,pitch, yaw);
 
-    if ( (ros::Time::now() - transform.header.stamp) > maxTFCacheDuration )
-    { //simply ignore outdated TF frames
-        ROS_WARN("TF found for %s. But it is outdated. Skipping it.", tfFrameId.c_str());
-        return;
-    }
-    ROS_DEBUG("TF found for %s.", tfFrameId.c_str());
+    ROS_DEBUG("Sending Zyre message.");
 
+    /* Convert to JSON Message */
+    Json::Value msg;
+//	{
+//	  "header":{
+//	    "type":"RobotPose2D",
+//	    "metamodel":"ropod-msg-schema.json",
+//	    "msgId":"5073dcfb-4849-42cd-a17a-ef33fa7c7a69"
+//	  },
+//	  "payload":{
+//	    "metamodel":"ropod-demo-robot-pose-2d-schema.json",
+//	    "robotId":"ropod_0",
+//	    "pose":{
+//	      "referenceId":"basement_map",
+//	      "x":10,
+//	      "y":20,
+//	      "theta":3.1415
+//	    }
+//	  }
+//	}
+    msg["header"]["type"] = "RobotPose2D";
+    msg["header"]["metamodel"] = "ropod-msg-schema.json";
+    msg["header"]["msgId"] = this->generateUUID();
 
-    if (ros::Time::now() - lastSend > ros::Duration(minSendDurationInSec))
-    { // throttld down pose messages
-        ROS_DEBUG("Sending Zyre message.");
+    char *timestr = zclock_timestr (); // TODO: this is not ISO 8601
+    msg["header"]["timestamp"] = timestr;
+    zstr_free(&timestr);
 
-        /* Convert to JSON Message */
-        Json::Value msg;
-    //	{
-    //	  "header":{
-    //	    "type":"RobotPose2D",
-    //	    "metamodel":"ropod-msg-schema.json",
-    //	    "msgId":"5073dcfb-4849-42cd-a17a-ef33fa7c7a69"
-    //	  },
-    //	  "payload":{
-    //	    "metamodel":"ropod-demo-robot-pose-2d-schema.json",
-    //	    "robotId":"ropod_0",
-    //	    "pose":{
-    //	      "referenceId":"basement_map",
-    //	      "x":10,
-    //	      "y":20,
-    //	      "theta":3.1415
-    //	    }
-    //	  }
-    //	}
-        msg["header"]["type"] = "RobotPose2D";
-        msg["header"]["metamodel"] = "ropod-msg-schema.json";
-        msg["header"]["msgId"] = this->generateUUID();
+    msg["payload"]["metamodel"] = "ropod-demo-robot-pose-2d-schema.json";
+    msg["payload"]["robotId"] = robotName;
+    msg["payload"]["pose"]["referenceId"] = pose_msg->header.frame_id;
+    msg["payload"]["pose"]["x"] = pose_msg->pose.position.x;
+    msg["payload"]["pose"]["y"] = pose_msg->pose.position.y;
+    msg["payload"]["pose"]["theta"] = yaw;
 
-        char *timestr = zclock_timestr (); // TODO: this is not ISO 8601
-        msg["header"]["timestamp"] = timestr;
-        zstr_free(&timestr);
-
-        msg["payload"]["metamodel"] = "ropod-demo-robot-pose-2d-schema.json";
-        msg["payload"]["robotId"] = robotName;
-        msg["payload"]["pose"]["referenceId"] = tfFrameReferenceId;
-        msg["payload"]["pose"]["x"] = transform.transform.translation.x;
-        msg["payload"]["pose"]["y"] = transform.transform.translation.y;
-        msg["payload"]["pose"]["theta"] = yaw;
-
-        std::stringstream poseMsg("");
-        poseMsg << msg;
-        this->shout(poseMsg.str());
-        lastSend = ros::Time::now();
-    }
+    std::stringstream poseMsg("");
+    poseMsg << msg;
+    this->shout(poseMsg.str());
 }
 
 void ComMediator::commandFeedbackCallback(const ropod_ros_msgs::CommandFeedback::ConstPtr &ros_msg)
