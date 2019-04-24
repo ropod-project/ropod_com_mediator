@@ -6,12 +6,9 @@
 /* ROS includes */
 #include <ros/ros.h>
 #include <std_msgs/String.h>
-#include <tf2_ros/buffer.h> //TF
-#include <tf2_ros/transform_listener.h> //TF
+#include <geometry_msgs/PoseStamped.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
-#include <tf2/transform_datatypes.h>
-#include <tf2/convert.h>
 
 /* Zyre + JSON includes */
 #include "zyre.h"
@@ -57,17 +54,12 @@ private:
     ros::Subscriber command_feedback_sub;
     ros::Subscriber experiment_feedback_sub;
 
-    tf2_ros::Buffer tfBuffer;
-    std::shared_ptr<tf2_ros::TransformListener> tfListener;
+    ros::Subscriber robot_pose_sub;
 
     Json::CharReaderBuilder json_builder;
 
-    double minSendDurationInSec;
-    std::string tfFrameId;
-    std::string tfFrameReferenceId;
     std::string robotName;
     std::string zyreGroupName;
-    ros::Time lastSend;
 
     void parseAndPublishTaskMessage(const Json::Value &root);
     void parseAndPublishElevatorReply(const Json::Value &root);
@@ -94,7 +86,7 @@ public:
     void commandFeedbackCallback(const ropod_ros_msgs::CommandFeedback::ConstPtr &ros_msg);
     void experimentFeedbackCallback(const ropod_ros_msgs::ExperimentFeedback::ConstPtr &ros_msg);
 
-    void tfCallback();
+    void robotPoseCallback(const geometry_msgs::PoseStamped::ConstPtr &pose_msg);
 
 
     std::string init();
