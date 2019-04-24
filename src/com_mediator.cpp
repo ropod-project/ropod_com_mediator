@@ -22,7 +22,7 @@ std::string getEnv(const std::string &var)
 
 ComMediator::ComMediator(int argc, char **argv)
     : FTSMBase("com_mediator", {"roscore"}),
-    ZyreBaseCommunicator(getEnv("ROPOD_ID") + std::string("_com_mediator"),
+    ZyreBaseCommunicator(getEnv("ROPOD_ID"),
                          false, "", true, false), // print msgs, network interface, acknowledge, startImmediately
     argc(argc),
     argv(argv)
@@ -137,6 +137,7 @@ std::string ComMediator::recovering()
     this->stopNode();
     if (!ros::ok())
     {
+        // used in main()
         nodeKilled = true;
         return FTSMTransitions::FAILED_RECOVERY;
     }
@@ -159,11 +160,6 @@ void ComMediator::recvMsgCallback(ZyreMsgContent *msgContent)
 
         if (root.isMember("header"))
         {
-            if (root["header"]["robotId"] != robotName)
-            {
-                return;
-            }
-
             if (root["header"]["type"] == "TASK")
             {
                 this->parseAndPublishTaskMessage(root);
@@ -380,19 +376,28 @@ void ComMediator::experimentFeedbackCallback(const ropod_ros_msgs::ExperimentFee
 void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
 {
     ropod_ros_msgs::Task task;
-    task.task_id = root["payload"]["taskId"].asString();
-    task.start_time = root["payload"]["earliest_start_time"].asDouble();
-    task.start_time = root["payload"]["latest_start_time"].asDouble();
-    task.cart_type = root["payload"]["cart_type"].asString();
-    task.cart_id = root["payload"]["cart_id"].asString();
-    task.cart_id = root["payload"]["estimated_duration"].asDouble();
-    task.cart_id = root["payload"]["priority"].asInt();
+    task.task_id = root["payload"]["id"].asString();
+    ROS_INFO_STREAM("[com_mediator] Received task " << task.task_id);
+    task.start_time = root["payload"]["start_time"].asDouble();
+    task.finish_time = root["payload"]["finish_time"].asDouble();
+    task.earliest_start_time = root["payload"]["earliest_start_time"].asDouble();
+    task.latest_start_time = root["payload"]["latest_start_time"].asDouble();
+    task.load_type = root["payload"]["loadType"].asString();
+    task.load_id = root["payload"]["loadId"].asString();
+    task.estimated_duration = root["payload"]["estimated_duration"].asDouble();
+    task.priority = root["payload"]["priority"].asInt();
     for (auto robot_id : root["payload"]["team_robot_ids"])
     {
         std::string robot_id_str = robot_id.asString();
         task.team_robot_ids.push_back(robot_id_str);
     }
-    const Json::Value &action_list = root["payload"]["actions"];
+    if (!root["payload"]["robot_actions"].isMember(robotName))
+    {
+        ROS_INFO_STREAM("No actions for " << robotName << ". Ignoring task");
+        return;
+    }
+    const Json::Value &action_list = root["payload"]["robot_actions"][robotName];
+    ROS_INFO_STREAM("Task has " << action_list.size() << " actions for " << robotName);
     for (int i = 0; i< action_list.size(); i++)
     {
         ropod_ros_msgs::Action action;
@@ -416,33 +421,25 @@ void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
                     ropod_ros_msgs::SubArea sub_area;
                     sub_area.name = wp[k]["name"].asString();
                     sub_area.id = wp[k]["id"].asString();
-                    sub_area.floor_number = wp[k]["floorNumber"].asInt();
-                    sub_area.waypoint_pose.position.x = wp[k]["x"].asDouble();
-                    sub_area.waypoint_pose.position.y = wp[k]["y"].asDouble();
-                    sub_area.waypoint_pose.orientation.w = 1.0;
+                    sub_area.type = wp[k]["type"].asString();
+                    // if capacity is not specified, it appears as an empty string
+                    try
+                    {
+                        sub_area.capacity = wp[k]["capacity"].asInt();
+                    }
+                    catch (std::exception &e)
+                    {
+                    }
                     area.sub_areas.push_back(sub_area);
                 }
                 action.areas.push_back(area);
             }
-            const Json::Value &wp = action_list[i]["subAreas"];
-            for (int k = 0; k < wp.size(); k++)
-            {
-                ropod_ros_msgs::SubArea sub_area;
-                sub_area.name = wp[k]["name"].asString();
-                sub_area.id = wp[k]["id"].asString();
-                sub_area.floor_number = wp[k]["floorNumber"].asInt();
-                sub_area.waypoint_pose.position.x = wp[k]["x"].asInt();
-                sub_area.waypoint_pose.position.y = wp[k]["y"].asInt();
-                sub_area.waypoint_pose.orientation.w = 1.0;
-                action.sub_areas.push_back(sub_area);
-            }
         }
         else if (action.type == "REQUEST_ELEVATOR")
         {
-            action.start_floor = action_list[i]["startFloor"].asInt();
-            action.goal_floor = action_list[i]["goalFloor"].asInt();
-            std::stringstream ss;
-            ss << action_list[i] << std::endl;
+            action.start_floor = action_list[i]["start_floor"].asInt();
+            action.goal_floor = action_list[i]["goal_floor"].asInt();
+            action.elevator.elevator_id = action_list[i]["elevator_id"].asInt();
         }
         task.robot_actions.push_back(action);
     }
@@ -455,6 +452,7 @@ void ComMediator::parseAndPublishElevatorReply(const Json::Value &root)
 {
     ropod_ros_msgs::ElevatorRequestReply reply;
     reply.query_id = root["payload"]["queryId"].asString();
+    ROS_INFO_STREAM("[com_mediator] Received elevator reply: " << reply.query_id);
     reply.query_success = root["payload"]["querySuccess"].asBool();
     reply.elevator_id = root["payload"]["elevatorId"].asInt();
     reply.elevator_door_id = root["payload"]["elevatorDoorId"].asInt();
