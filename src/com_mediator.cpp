@@ -21,7 +21,8 @@ std::string getEnv(const std::string &var)
 }
 
 ComMediator::ComMediator(int argc, char **argv)
-    : FTSMBase("com_mediator", {"roscore"}),
+    : FTSMBase("com_mediator", {"roscore"},
+               {{"roscore", {{"functional", "ros/ros_master_monitor"}}}}),
     ZyreBaseCommunicator(getEnv("ROPOD_ID"),
                          false, "", true, false), // print msgs, network interface, acknowledge, startImmediately
     argc(argc),

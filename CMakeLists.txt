@@ -11,6 +11,7 @@ set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 
 set(INSTALL_DIR /usr/lib CACHE PATH "Installation directory for mediator")
 
+include(/opt/ropod/ropod_common/ropodcpp/ftsm/CMakeLists.txt)
 
 ########################################################################
 # ROS dependency
@@ -28,7 +29,6 @@ include_directories(
     include
     /opt/ropod/ropod_common/ropodcpp/zyre_communicator/include
     /opt/ropod/ftsm/cppftsm/include
-    /opt/ropod/ropod_common/ropodcpp/ftsm/include
     ${catkin_INCLUDE_DIRS}
 )
 
@@ -114,5 +114,6 @@ add_executable(ropod_com_mediator
     /opt/ropod/ropod_common/ropodcpp/ftsm/src/ftsm_base.cpp
     /opt/ropod/ftsm/cppftsm/src/ftsm.cpp
 )
+
 add_dependencies(ropod_com_mediator ropod_ros_msgs_generate_messages_cpp)
-target_link_libraries(ropod_com_mediator ${LIBS}  ${catkin_LIBRARIES})
+target_link_libraries(ropod_com_mediator ${LIBS} ${catkin_LIBRARIES} ${FTSM_LIBRARIES})
