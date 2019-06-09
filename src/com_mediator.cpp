@@ -373,7 +373,7 @@ void ComMediator::experimentResultCallback(const actionlib::SimpleClientGoalStat
 void ComMediator::experimentTransitionCallback(const ropod_ros_msgs::TransitionList::ConstPtr &ros_msg)
 {
     Json::Value msg;
-    msg["header"]["type"] = "ROBOT-EXPERIMENT-TRANSITION";
+    msg["header"]["type"] = "ROBOT-EXPERIMENT-SM";
     msg["header"]["metamodel"] = "ropod-msg-schema.json";
     msg["header"]["msgId"] = this->generateUUID();
     msg["header"]["timestamp"] = ros::Time::now().toSec();
