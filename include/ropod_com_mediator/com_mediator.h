@@ -9,6 +9,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
+#include <actionlib/client/simple_action_client.h>
 
 /* Zyre + JSON includes */
 #include "zyre.h"
@@ -23,10 +24,8 @@
 #include <ropod_ros_msgs/ElevatorRequest.h>
 #include <ropod_ros_msgs/ElevatorRequestReply.h>
 
-/* Remote experiment messages */
-#include <ropod_ros_msgs/ExecuteExperiment.h>
-#include <ropod_ros_msgs/CommandFeedback.h>
-#include <ropod_ros_msgs/ExperimentFeedback.h>
+/* Remote experiment action */
+#include <ropod_ros_msgs/ExecuteExperimentAction.h>
 
 #include <ftsm_base.h>
 
@@ -49,10 +48,7 @@ private:
     ros::Subscriber elevator_request_sub;
     ros::Publisher elevator_request_reply_pub;
 
-    // remote experiments
-    ros::Publisher experiment_pub;
-    ros::Subscriber command_feedback_sub;
-    ros::Subscriber experiment_feedback_sub;
+    std::unique_ptr<actionlib::SimpleActionClient<ropod_ros_msgs::ExecuteExperimentAction>> experiment_client;
 
     ros::Subscriber robot_pose_sub;
 
@@ -67,7 +63,7 @@ private:
 
     void startNode();
     void loadParameters();
-    void createSubcribersPublishers();
+    void createSubscribersPublishers();
     void stopNode();
 
 public:
@@ -83,11 +79,11 @@ public:
     void elevatorRequestCallback(const ropod_ros_msgs::ElevatorRequest::ConstPtr &ros_msg);
 
     // remote experiments
-    void commandFeedbackCallback(const ropod_ros_msgs::CommandFeedback::ConstPtr &ros_msg);
-    void experimentFeedbackCallback(const ropod_ros_msgs::ExperimentFeedback::ConstPtr &ros_msg);
+    void experimentFeedbackCallback(const ropod_ros_msgs::ExecuteExperimentFeedbackConstPtr &ros_msg);
+    void experimentResultCallback(const actionlib::SimpleClientGoalState& state,
+                                  const ropod_ros_msgs::ExecuteExperimentResultConstPtr &ros_msg);
 
     void robotPoseCallback(const geometry_msgs::PoseStamped::ConstPtr &pose_msg);
-
 
     std::string init();
     std::string configuring();

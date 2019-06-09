@@ -52,7 +52,7 @@ std::string ComMediator::init()
 {
     // start ROS node
     this->startNode();
-    this->createSubcribersPublishers();
+    this->createSubscribersPublishers();
     this->loadParameters();
     return FTSMTransitions::INITIALISED;
 }
@@ -72,7 +72,7 @@ void ComMediator::startNode()
     nh.reset(new ros::NodeHandle("~"));
 }
 
-void ComMediator::createSubcribersPublishers()
+void ComMediator::createSubscribersPublishers()
 {
     ropod_task_pub = nh->advertise<ropod_ros_msgs::Task>("task", 1);
     progress_goto_sub = nh->subscribe<ropod_ros_msgs::TaskProgressGOTO>("ropod_task_feedback/goto", 1,
@@ -84,13 +84,11 @@ void ComMediator::createSubcribersPublishers()
                                         &ComMediator::elevatorRequestCallback, this);
     elevator_request_reply_pub = nh->advertise<ropod_ros_msgs::ElevatorRequestReply>("elevator_request_reply", 1);
 
-    // remote experiments
-    this->experiment_pub = nh->advertise<ropod_ros_msgs::ExecuteExperiment>("/ropod/execute_experiment", 1);
-    this->command_feedback_sub = nh->subscribe<ropod_ros_msgs::CommandFeedback>("/ropod/cmd_feedback", 1,
-                                        &ComMediator::commandFeedbackCallback, this);
-    this->experiment_feedback_sub = nh->subscribe<ropod_ros_msgs::ExperimentFeedback>("/ropod/experiment_feedback", 1,
-                                        &ComMediator::experimentFeedbackCallback, this);
     robot_pose_sub = nh->subscribe<geometry_msgs::PoseStamped>("robot_pose", 1, &ComMediator::robotPoseCallback, this);
+
+    this->experiment_client = std::unique_ptr<actionlib::SimpleActionClient<ropod_ros_msgs::ExecuteExperimentAction>>
+                              (new actionlib::SimpleActionClient<ropod_ros_msgs::ExecuteExperimentAction>
+                                  ("/ropod/execute_experiment", true));
 }
 
 void ComMediator::loadParameters()
@@ -113,9 +111,7 @@ void ComMediator::stopNode()
     progress_dock_sub.shutdown();
     elevator_request_sub.shutdown();
     elevator_request_reply_pub.shutdown();
-    experiment_pub.shutdown();
-    command_feedback_sub.shutdown();
-    experiment_feedback_sub.shutdown();
+    experiment_client->cancelAllGoals();
 }
 
 std::string ComMediator::running()
@@ -144,7 +140,7 @@ std::string ComMediator::recovering()
     }
     this->startNode();
     ros::spinOnce();
-    this->createSubcribersPublishers();
+    this->createSubscribersPublishers();
     return FTSMTransitions::DONE_RECOVERING;
 }
 
@@ -335,7 +331,7 @@ void ComMediator::robotPoseCallback(const geometry_msgs::PoseStamped::ConstPtr &
     this->shout(poseMsg.str());
 }
 
-void ComMediator::commandFeedbackCallback(const ropod_ros_msgs::CommandFeedback::ConstPtr &ros_msg)
+void ComMediator::experimentFeedbackCallback(const ropod_ros_msgs::ExecuteExperimentFeedbackConstPtr &ros_msg)
 {
     Json::Value msg;
     msg["header"]["type"] = "ROBOT-COMMAND-FEEDBACK";
@@ -353,7 +349,8 @@ void ComMediator::commandFeedbackCallback(const ropod_ros_msgs::CommandFeedback:
     this->shout(jsonMsg.str(), zyreGroupName);
 }
 
-void ComMediator::experimentFeedbackCallback(const ropod_ros_msgs::ExperimentFeedback::ConstPtr &ros_msg)
+void ComMediator::experimentResultCallback(const actionlib::SimpleClientGoalState& state,
+                                           const ropod_ros_msgs::ExecuteExperimentResultConstPtr &ros_msg)
 {
     Json::Value msg;
     msg["header"]["type"] = "ROBOT-EXPERIMENT-FEEDBACK";
@@ -464,9 +461,13 @@ void ComMediator::parseAndPublishExperimentMessage(const Json::Value &root)
 {
     std::string experiment_type = root["payload"]["experimentType"].asString();
     ROS_INFO("[com_mediator] Received '%s' experiment request", experiment_type.c_str());
-    ropod_ros_msgs::ExecuteExperiment experiment_msg;
+
+    ropod_ros_msgs::ExecuteExperimentGoal experiment_msg;
     experiment_msg.experiment_type = experiment_type;
-    this->experiment_pub.publish(experiment_msg);
+    this->experiment_client->sendGoal(experiment_msg,
+                                      boost::bind(&ComMediator::experimentResultCallback, this, _1, _2),
+                                      actionlib::SimpleActionClient<ropod_ros_msgs::ExecuteExperimentAction>::SimpleActiveCallback(),
+                                      boost::bind(&ComMediator::experimentFeedbackCallback, this, _1));
 }
 
 int main(int argc, char **argv)
