@@ -23,6 +23,7 @@
 #include <ropod_ros_msgs/Status.h>
 #include <ropod_ros_msgs/ElevatorRequest.h>
 #include <ropod_ros_msgs/ElevatorRequestReply.h>
+#include <ropod_ros_msgs/TransitionList.h>
 
 /* Remote experiment action */
 #include <ropod_ros_msgs/ExecuteExperimentAction.h>
@@ -47,6 +48,9 @@ private:
     ros::Subscriber progress_dock_sub;
     ros::Subscriber elevator_request_sub;
     ros::Publisher elevator_request_reply_pub;
+
+    // remote monitoring
+    ros::Subscriber experiment_transition_sub;
 
     std::unique_ptr<actionlib::SimpleActionClient<ropod_ros_msgs::ExecuteExperimentAction>> experiment_client;
 
@@ -82,6 +86,7 @@ public:
     void experimentFeedbackCallback(const ropod_ros_msgs::ExecuteExperimentFeedbackConstPtr &ros_msg);
     void experimentResultCallback(const actionlib::SimpleClientGoalState& state,
                                   const ropod_ros_msgs::ExecuteExperimentResultConstPtr &ros_msg);
+    void experimentTransitionCallback(const ropod_ros_msgs::TransitionList::ConstPtr &ros_msg);
 
     void robotPoseCallback(const geometry_msgs::PoseStamped::ConstPtr &pose_msg);
 
