@@ -89,6 +89,8 @@ void ComMediator::createSubscribersPublishers()
     this->experiment_client = std::unique_ptr<actionlib::SimpleActionClient<ropod_ros_msgs::ExecuteExperimentAction>>
                               (new actionlib::SimpleActionClient<ropod_ros_msgs::ExecuteExperimentAction>
                                   ("/ropod/execute_experiment", true));
+    this->experiment_transition_sub = nh->subscribe<ropod_ros_msgs::TransitionList>(
+            "/ropod/transition_list", 1, &ComMediator::experimentTransitionCallback, this);
 }
 
 void ComMediator::loadParameters()
@@ -362,6 +364,31 @@ void ComMediator::experimentResultCallback(const actionlib::SimpleClientGoalStat
     msg["payload"]["robotId"] = this->robotName;
     msg["payload"]["experimentType"] = ros_msg->experiment_type;
     msg["payload"]["result"] = ros_msg->result;
+
+    std::stringstream jsonMsg("");
+    jsonMsg << msg;
+    this->shout(jsonMsg.str(), zyreGroupName);
+}
+
+void ComMediator::experimentTransitionCallback(const ropod_ros_msgs::TransitionList::ConstPtr &ros_msg)
+{
+    Json::Value msg;
+    msg["header"]["type"] = "ROBOT-EXPERIMENT-SM";
+    msg["header"]["metamodel"] = "ropod-msg-schema.json";
+    msg["header"]["msgId"] = this->generateUUID();
+    msg["header"]["timestamp"] = ros::Time::now().toSec();
+
+    msg["payload"]["metamodel"] = "ropod-experiment-transition-schema.json";
+    msg["payload"]["robotId"] = this->robotName;
+    Json::Value transitions;
+    for (int i = 0; i < ros_msg->transitions.size(); i++){
+        Json::Value transition;
+        transition["source"] = ros_msg->transitions[i].source;
+        transition["target"] = ros_msg->transitions[i].target;
+        transition["name"] = ros_msg->transitions[i].name;
+        transitions.append(transition);
+    }
+    msg["payload"]["transitions"] = transitions;
 
     std::stringstream jsonMsg("");
     jsonMsg << msg;
