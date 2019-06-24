@@ -354,6 +354,11 @@ void ComMediator::experimentFeedbackCallback(const ropod_ros_msgs::ExecuteExperi
 void ComMediator::experimentResultCallback(const actionlib::SimpleClientGoalState& state,
                                            const ropod_ros_msgs::ExecuteExperimentResultConstPtr &ros_msg)
 {
+    if (!ros_msg)
+    {
+        ROS_WARN_STREAM("experimentResultCallback got NULL result");
+        return;
+    }
     Json::Value msg;
     msg["header"]["type"] = "ROBOT-EXPERIMENT-FEEDBACK";
     msg["header"]["metamodel"] = "ropod-msg-schema.json";
