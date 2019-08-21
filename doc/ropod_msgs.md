@@ -302,7 +302,7 @@ Should this be sent regularly or only when a status changes?
 ```
 {
   "header":{
-    "type":"RobotPose2D",
+    "type":"ROBOT-POSE-2D",
     "metamodel":"ropod-msg-schema.json",
     "msg_id":"5073dcfb-4849-42cd-a17a-ef33fa7c7a69"
   },

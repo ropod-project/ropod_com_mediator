@@ -298,7 +298,7 @@ void ComMediator::robotPoseCallback(const geometry_msgs::PoseStamped::ConstPtr &
     Json::Value msg;
 //	{
 //	  "header":{
-//	    "type":"RobotPose2D",
+//	    "type":"ROBOT-POSE-2D",
 //	    "metamodel":"ropod-msg-schema.json",
 //	    "msgId":"5073dcfb-4849-42cd-a17a-ef33fa7c7a69"
 //	  },
@@ -313,7 +313,7 @@ void ComMediator::robotPoseCallback(const geometry_msgs::PoseStamped::ConstPtr &
 //	    }
 //	  }
 //	}
-    msg["header"]["type"] = "RobotPose2D";
+    msg["header"]["type"] = "ROBOT-POSE-2D";
     msg["header"]["metamodel"] = "ropod-msg-schema.json";
     msg["header"]["msgId"] = this->generateUUID();
 
