@@ -65,11 +65,6 @@ private:
     void parseAndPublishElevatorReply(const Json::Value &root);
     void parseAndPublishExperimentMessage(const Json::Value &root);
 
-    void startNode();
-    void loadParameters();
-    void createSubscribersPublishers();
-    void stopNode();
-
 public:
     ComMediator(int argc, char**argv);
     virtual ~ComMediator();
@@ -90,11 +85,14 @@ public:
 
     void robotPoseCallback(const geometry_msgs::PoseStamped::ConstPtr &pose_msg);
 
-    std::string init();
-    std::string configuring();
-    std::string ready();
-    std::string running();
-    std::string recovering();
+    virtual std::string init();
+    virtual std::string configuring();
+    virtual std::string ready();
+    virtual std::string running();
+    virtual std::string recovering();
+
+    virtual void setupRos();
+    virtual void tearDownRos();
 };
 
 #endif /* COM_MEDIATOR_H */

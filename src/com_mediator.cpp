@@ -22,7 +22,7 @@ std::string getEnv(const std::string &var)
 
 ComMediator::ComMediator(int argc, char **argv)
     : FTSMBase("com_mediator", {"roscore"},
-               {{"functional", {{"roscore", "ros/ros_master_monitor"}}}}),
+               {{"heartbeat", {{"roscore", "ros/ros_master_monitor"}}}}),
     ZyreBaseCommunicator(getEnv("ROPOD_ID"),
                          false, "", true, false), // print msgs, network interface, acknowledge, startImmediately
     argc(argc),
@@ -50,10 +50,8 @@ ComMediator::~ComMediator() { }
 
 std::string ComMediator::init()
 {
-    // start ROS node
-    this->startNode();
-    this->createSubscribersPublishers();
-    this->loadParameters();
+    this->setupRos();
+    this->joinGroup(zyreGroupName);
     return FTSMTransitions::INITIALISED;
 }
 
@@ -66,35 +64,44 @@ std::string ComMediator::ready()
     return FTSMTransitions::RUN;
 }
 
-void ComMediator::startNode()
+void ComMediator::setupRos()
 {
+    ROS_INFO("Initialising ROS node");
     ros::init(argc, argv, "com_mediator");
     nh.reset(new ros::NodeHandle("~"));
-}
 
-void ComMediator::createSubscribersPublishers()
-{
+    ROS_INFO("[com_mediator] Creating a task publisher");
     ropod_task_pub = nh->advertise<ropod_ros_msgs::Task>("task", 1);
+
+    ROS_INFO("[com_mediator] Creating a ropod_task_feedback/goto subscriber");
     progress_goto_sub = nh->subscribe<ropod_ros_msgs::TaskProgressGOTO>("ropod_task_feedback/goto", 1,
                                         &ComMediator::progressGOTOCallback, this);
+
+    ROS_INFO("[com_mediator] Creating a ropod_task_feedback/dock subscriber");
     progress_dock_sub = nh->subscribe<ropod_ros_msgs::TaskProgressDOCK>("ropod_task_feedback/dock", 1,
                                         &ComMediator::progressDOCKCallback, this);
 
+    ROS_INFO("[com_mediator] Creating an elevator_request subscriber");
     elevator_request_sub = nh->subscribe<ropod_ros_msgs::ElevatorRequest>("elevator_request", 1,
                                         &ComMediator::elevatorRequestCallback, this);
+
+    ROS_INFO("[com_mediator] Creating an elevator_request_reply publisher");
     elevator_request_reply_pub = nh->advertise<ropod_ros_msgs::ElevatorRequestReply>("elevator_request_reply", 1);
 
+    ROS_INFO("[com_mediator] Creating a robot_pose subscriber");
     robot_pose_sub = nh->subscribe<geometry_msgs::PoseStamped>("robot_pose", 1, &ComMediator::robotPoseCallback, this);
 
+    ROS_INFO("[com_mediator] Creating a /ropod/execute_experiment action client");
     this->experiment_client = std::unique_ptr<actionlib::SimpleActionClient<ropod_ros_msgs::ExecuteExperimentAction>>
                               (new actionlib::SimpleActionClient<ropod_ros_msgs::ExecuteExperimentAction>
                                   ("/ropod/execute_experiment", true));
+
+    ROS_INFO("[com_mediator] Creating a /ropod/transition_list subscriber");
     this->experiment_transition_sub = nh->subscribe<ropod_ros_msgs::TransitionList>(
             "/ropod/transition_list", 1, &ComMediator::experimentTransitionCallback, this);
-}
 
-void ComMediator::loadParameters()
-{
+
+    ROS_INFO("[com_mediator] Reading ROS parameters");
     if (robotName.empty())
     {
         nh->param<std::string>("robotName", robotName, "ropod_1");
@@ -103,10 +110,9 @@ void ComMediator::loadParameters()
     double loop_rate;
     nh->param<double>("loop_rate", loop_rate, 10.0);
     rate.reset(new ros::Rate(loop_rate));
-    this->joinGroup(zyreGroupName);
 }
 
-void ComMediator::stopNode()
+void ComMediator::tearDownRos()
 {
     ropod_task_pub.shutdown();
     progress_goto_sub.shutdown();
@@ -118,7 +124,14 @@ void ComMediator::stopNode()
 
 std::string ComMediator::running()
 {
-    if(ros::ok() && !zsys_interrupted && ros::master::check())
+    Json::Value root;
+    Json::Reader reader;
+    bool parsingSuccessful = reader.parse(this->depend_statuses[DependMonitorTypes::HEARTBEAT]
+                                                               ["roscore"]
+                                                               ["ros/ros_master_monitor"].c_str(), root);
+    bool master_available = root["status"].asBool();
+
+    if(!zsys_interrupted && master_available)
     {
         ros::spinOnce();
         rate->sleep();
@@ -133,16 +146,7 @@ std::string ComMediator::running()
 
 std::string ComMediator::recovering()
 {
-    this->stopNode();
-    if (!ros::ok())
-    {
-        // used in main()
-        nodeKilled = true;
-        return FTSMTransitions::FAILED_RECOVERY;
-    }
-    this->startNode();
-    ros::spinOnce();
-    this->createSubscribersPublishers();
+    this->recoverFromPossibleDeadRosmaster();
     return FTSMTransitions::DONE_RECOVERING;
 }
 
