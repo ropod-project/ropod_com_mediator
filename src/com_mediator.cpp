@@ -91,6 +91,9 @@ void ComMediator::setupRos()
     ROS_INFO("[com_mediator] Creating a robot_pose subscriber");
     robot_pose_sub = nh->subscribe<geometry_msgs::PoseStamped>("robot_pose", 1, &ComMediator::robotPoseCallback, this);
 
+    ROS_INFO("[com_mediator] Creating a robot_subarea subscriber");
+    robot_subarea_sub = nh->subscribe<std_msgs::String>("robot_subarea", 1, &ComMediator::robotSubAreaCallback, this);
+
     ROS_INFO("[com_mediator] Creating a /ropod/execute_experiment action client");
     this->experiment_client = std::unique_ptr<actionlib::SimpleActionClient<ropod_ros_msgs::ExecuteExperimentAction>>
                               (new actionlib::SimpleActionClient<ropod_ros_msgs::ExecuteExperimentAction>
@@ -335,6 +338,12 @@ void ComMediator::robotPoseCallback(const geometry_msgs::PoseStamped::ConstPtr &
     std::stringstream poseMsg("");
     poseMsg << msg;
     this->shout(poseMsg.str());
+}
+
+void ComMediator::robotSubAreaCallback(const std_msgs::String::ConstPtr &subarea_msg)
+{
+    // Update the robot subarea
+    robotSubAreaName = subarea_msg->data;
 }
 
 void ComMediator::experimentFeedbackCallback(const ropod_ros_msgs::ExecuteExperimentFeedbackConstPtr &ros_msg)
