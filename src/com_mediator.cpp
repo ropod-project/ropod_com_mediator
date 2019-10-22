@@ -222,7 +222,7 @@ void ComMediator::progressDOCKCallback(const ropod_ros_msgs::TaskProgressDOCK::C
 {
     Json::Value msg;
 
-    msg["header"]["type"] = "TASK-PROGRESS";
+    msg["header"]["type"] = "TASK-STATUS";
     msg["header"]["metamodel"] = "ropod-msg-schema.json";
     zuuid_t * uuid = zuuid_new();
     const char * uuid_str = zuuid_str_canonical(uuid);
@@ -233,17 +233,15 @@ void ComMediator::progressDOCKCallback(const ropod_ros_msgs::TaskProgressDOCK::C
     msg["header"]["timestamp"] = timestr;
     zstr_free(&timestr);
 
-
     msg["payload"]["metamodel"] = "ropod-demo-progress-schema.json";
     msg["payload"]["taskId"] = ros_msg->task_id;
     // msg["payload"]["robotId"] = ros_msg->robot_id;
     msg["payload"]["robotId"] = robotName;
-    msg["payload"]["actionId"] = ros_msg->action_id;
-    msg["payload"]["actionType"] = ros_msg->action_type;
-    msg["payload"]["status"]["areaName"] = ros_msg->area_name;
-    msg["payload"]["status"]["actionStatus"] = ros_msg->status.status_code;
-    msg["payload"]["status"]["taskStatus"] = ros_msg->task_status.status_code;
-    // msg["payload"]["status"]["currentAction"] = ros_msg->currentAction;
+    msg["payload"]["taskStatus"] = ros_msg->task_status.status_code;
+    msg["payload"]["taskProgress"]["actionId"] = ros_msg->action_id;
+    msg["payload"]["taskProgress"]["actionStatus"] = ros_msg->status.status_code;
+    msg["payload"]["taskProgress"]["actionType"] = ros_msg->action_type;
+    msg["payload"]["taskProgress"]["area"] = ros_msg->area_name;
 
     std::stringstream feedbackMsg("");
     feedbackMsg << msg;
