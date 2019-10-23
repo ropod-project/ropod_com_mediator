@@ -18,8 +18,8 @@ if __name__ == '__main__':
     rate = rospy.Rate(10.0)
     while not rospy.is_shutdown():
         t = rospy.Time.now().to_sec() * math.pi / 10.0
-	theta = -t * math.pi/5.0;
-	q = tf.transformations.quaternion_from_euler(0, 0, theta)
+        theta = -t * math.pi/5.0;
+        q = tf.transformations.quaternion_from_euler(0, 0, theta)
         br.sendTransform((1.0 * math.sin(t), 2.0 * math.cos(t), (0.1 * math.sin(2*t))+ 0.2),
                          q,			
                          rospy.Time.now(),
