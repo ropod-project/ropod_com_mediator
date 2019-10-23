@@ -26,7 +26,8 @@ ComMediator::ComMediator(int argc, char **argv)
     ZyreBaseCommunicator(getEnv("ROPOD_ID"),
                          false, "", true, false), // print msgs, network interface, acknowledge, startImmediately
     argc(argc),
-    argv(argv)
+    argv(argv),
+    robotSubAreaName("UNKNOWN")
 {
     std::vector<std::string> sendAcknowledgementFor;
     sendAcknowledgementFor.push_back("TASK");
