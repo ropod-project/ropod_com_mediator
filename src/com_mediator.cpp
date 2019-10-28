@@ -206,11 +206,12 @@ void ComMediator::progressGOTOCallback(const ropod_ros_msgs::TaskProgressGOTO::C
     msg["payload"]["taskId"] = ros_msg->task_id;
     // msg["payload"]["robotId"] = ros_msg->robot_id;
     msg["payload"]["robotId"] = robotName;
-    // msg["payload"]["taskStatus"] = "ongoing";
     msg["payload"]["taskStatus"] = ros_msg->task_status.status_code;
     msg["payload"]["taskProgress"]["actionId"] = ros_msg->action_id;
-    msg["payload"]["taskProgress"]["actionStatus"] = ros_msg->status.status_code;
     msg["payload"]["taskProgress"]["actionType"] = ros_msg->action_type;
+    msg["payload"]["taskProgress"]["actionStatus"]["domain"] = ros_msg->status.domain;
+    msg["payload"]["taskProgress"]["actionStatus"]["module"] = ros_msg->status.module_code;
+    msg["payload"]["taskProgress"]["actionStatus"]["status"] = ros_msg->status.status_code;
     msg["payload"]["taskProgress"]["area"] = ros_msg->area_name;
 
     std::stringstream feedbackMsg("");
@@ -239,8 +240,10 @@ void ComMediator::progressDOCKCallback(const ropod_ros_msgs::TaskProgressDOCK::C
     msg["payload"]["robotId"] = robotName;
     msg["payload"]["taskStatus"] = ros_msg->task_status.status_code;
     msg["payload"]["taskProgress"]["actionId"] = ros_msg->action_id;
-    msg["payload"]["taskProgress"]["actionStatus"] = ros_msg->status.status_code;
     msg["payload"]["taskProgress"]["actionType"] = ros_msg->action_type;
+    msg["payload"]["taskProgress"]["actionStatus"]["domain"] = ros_msg->status.domain;
+    msg["payload"]["taskProgress"]["actionStatus"]["module"] = ros_msg->status.module_code;
+    msg["payload"]["taskProgress"]["actionStatus"]["status"] = ros_msg->status.status_code;
     msg["payload"]["taskProgress"]["area"] = ros_msg->area_name;
 
     std::stringstream feedbackMsg("");
