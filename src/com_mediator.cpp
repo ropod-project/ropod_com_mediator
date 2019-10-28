@@ -410,37 +410,55 @@ void ComMediator::experimentTransitionCallback(const ropod_ros_msgs::TransitionL
 void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
 {
     ropod_ros_msgs::Task task;
-    task.task_id = root["payload"]["id"].asString();
+    task.task_id = root["payload"]["taskId"].asString();
     ROS_INFO_STREAM("[com_mediator] Received task " << task.task_id);
-    task.start_time = root["payload"]["start_time"].asDouble();
-    task.finish_time = root["payload"]["finish_time"].asDouble();
-    task.earliest_start_time = root["payload"]["earliest_start_time"].asDouble();
-    task.latest_start_time = root["payload"]["latest_start_time"].asDouble();
-    task.load_type = root["payload"]["loadType"].asString();
-    task.load_id = root["payload"]["loadId"].asString();
-    task.estimated_duration = root["payload"]["estimated_duration"].asDouble();
-    task.priority = root["payload"]["priority"].asInt();
-    for (auto robot_id : root["payload"]["team_robot_ids"])
+    for (auto robot_id : root["payload"]["assignedRobots"])
     {
         std::string robot_id_str = robot_id.asString();
         task.team_robot_ids.push_back(robot_id_str);
     }
-    if (!root["payload"]["robot_actions"].isMember(robotName))
+
+    // TODO: Convert year and time format to double?
+    // task.start_time = root["payload"]["startTime"].asDouble();
+    // task.finish_time = root["payload"]["finishTime"].asDouble();
+
+    // TODO: This needs a change on the FMS side
+    // task.earliest_start_time = root["payload"]["earliest_start_time"].asDouble();
+    // task.latest_start_time = root["payload"]["latest_start_time"].asDouble();
+    // task.load_type = root["payload"]["loadType"].asString();
+    // task.load_id = root["payload"]["loadId"].asString();
+    // task.estimated_duration = root["payload"]["estimated_duration"].asDouble();
+    // task.priority = root["payload"]["priority"].asInt();
+
+    // Try to find if a plan exists for the current robot in the full list of plans
+    const Json::Value &plan_list = root["payload"]["plan"];
+    int plan_id = -1;
+    for (unsigned int pid = 0; pid < plan_list.size(); pid++)
+    {
+        if (plan_list[pid]["_id"] == robotName)
+        {
+            plan_id = pid;
+        }
+    }
+    if (plan_id < 0)
     {
         ROS_INFO_STREAM("No actions for " << robotName << ". Ignoring task");
         return;
     }
-    const Json::Value &action_list = root["payload"]["robot_actions"][robotName];
+
+    // Process the actions present in the plan
+    const Json::Value &action_list = plan_list[plan_id]["actions"];
     ROS_INFO_STREAM("Task has " << action_list.size() << " actions for " << robotName);
     for (int i = 0; i< action_list.size(); i++)
     {
         ropod_ros_msgs::Action action;
-        action.action_id = action_list[i]["id"].asString();
+        action.action_id = action_list[i]["_id"].asString();
         action.type = action_list[i]["type"].asString();
         if (action.type == "GOTO" || action.type == "DOCK" || action.type == "UNDOCK")
         {
-            action.execution_status = action_list[i]["execution_status"].asString();
-            action.estimated_duration = action_list[i]["eta"].asFloat();
+            // TODO: Is this still needed?
+            // action.execution_status = action_list[i]["execution_status"].asString();
+            // action.estimated_duration = action_list[i]["eta"].asFloat();
             const Json::Value &areas = action_list[i]["areas"];
             for (int j = 0; j < areas.size(); j++)
             {
@@ -448,14 +466,16 @@ void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
                 area.id = areas[j]["id"].asString();
                 area.name = areas[j]["name"].asString();
                 area.type = areas[j]["type"].asString();
-                area.floor_number = areas[j]["floorNumber"].asInt();
-                const Json::Value &wp = areas[j]["subAreas"];
+                // TODO: floor number not available in the new message template
+                // area.floor_number = areas[j]["floorNumber"].asInt();
+                const Json::Value &wp = areas[j]["subareas"];
                 for (int k = 0; k < wp.size(); k++)
                 {
                     ropod_ros_msgs::SubArea sub_area;
                     sub_area.name = wp[k]["name"].asString();
                     sub_area.id = wp[k]["id"].asString();
-                    sub_area.type = wp[k]["type"].asString();
+                    // TODO: subarea_type not a part of new message
+                    // sub_area.type = wp[k]["type"].asString();
                     // if capacity is not specified, it appears as an empty string
                     try
                     {
