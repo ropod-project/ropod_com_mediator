@@ -55,11 +55,13 @@ private:
     std::unique_ptr<actionlib::SimpleActionClient<ropod_ros_msgs::ExecuteExperimentAction>> experiment_client;
 
     ros::Subscriber robot_pose_sub;
+    ros::Subscriber robot_subarea_sub;
 
     Json::CharReaderBuilder json_builder;
 
     std::string robotName;
     std::string zyreGroupName;
+    std::string robotSubAreaName;
 
     void parseAndPublishTaskMessage(const Json::Value &root);
     void parseAndPublishElevatorReply(const Json::Value &root);
@@ -84,6 +86,7 @@ public:
     void experimentTransitionCallback(const ropod_ros_msgs::TransitionList::ConstPtr &ros_msg);
 
     void robotPoseCallback(const geometry_msgs::PoseStamped::ConstPtr &pose_msg);
+    void robotSubAreaCallback(const std_msgs::String::ConstPtr &subarea_msg);
 
     virtual std::string init();
     virtual std::string configuring();

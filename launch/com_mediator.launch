@@ -8,6 +8,7 @@
         <param name="zyreGroupName" type="str" value="ROPOD"/>
         <param name="minSendDurationInSec" type="double" value="0.1"/>
         <remap from="~robot_pose" to="/ropod/pose"/>
+	    <remap from="~robot_subarea" to="/ropod/subarea" />
     </node>
     <node name="robot_pose_publisher" pkg="ropod_com_mediator" type="robot_pose_publisher.py" output="screen">
         <param name="reference_frame" type="str" value="map"/>

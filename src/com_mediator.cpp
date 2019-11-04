@@ -26,7 +26,8 @@ ComMediator::ComMediator(int argc, char **argv)
     ZyreBaseCommunicator(getEnv("ROPOD_ID"),
                          false, "", true, false), // print msgs, network interface, acknowledge, startImmediately
     argc(argc),
-    argv(argv)
+    argv(argv),
+    robotSubAreaName("UNKNOWN")
 {
     std::vector<std::string> sendAcknowledgementFor;
     sendAcknowledgementFor.push_back("TASK");
@@ -90,6 +91,9 @@ void ComMediator::setupRos()
 
     ROS_INFO("[com_mediator] Creating a robot_pose subscriber");
     robot_pose_sub = nh->subscribe<geometry_msgs::PoseStamped>("robot_pose", 1, &ComMediator::robotPoseCallback, this);
+
+    ROS_INFO("[com_mediator] Creating a robot_subarea subscriber");
+    robot_subarea_sub = nh->subscribe<std_msgs::String>("robot_subarea", 1, &ComMediator::robotSubAreaCallback, this);
 
     ROS_INFO("[com_mediator] Creating a /ropod/execute_experiment action client");
     this->experiment_client = std::unique_ptr<actionlib::SimpleActionClient<ropod_ros_msgs::ExecuteExperimentAction>>
@@ -316,7 +320,7 @@ void ComMediator::robotPoseCallback(const geometry_msgs::PoseStamped::ConstPtr &
 //	    }
 //	  }
 //	}
-    msg["header"]["type"] = "ROBOT-POSE-2D";
+    msg["header"]["type"] = "ROBOT-POSE";
     msg["header"]["metamodel"] = "ropod-msg-schema.json";
     msg["header"]["msgId"] = this->generateUUID();
 
@@ -326,6 +330,7 @@ void ComMediator::robotPoseCallback(const geometry_msgs::PoseStamped::ConstPtr &
 
     msg["payload"]["metamodel"] = "ropod-demo-robot-pose-2d-schema.json";
     msg["payload"]["robotId"] = robotName;
+    msg["payload"]["subarea"] = robotSubAreaName;
     msg["payload"]["pose"]["referenceId"] = pose_msg->header.frame_id;
     msg["payload"]["pose"]["x"] = pose_msg->pose.position.x;
     msg["payload"]["pose"]["y"] = pose_msg->pose.position.y;
@@ -334,6 +339,12 @@ void ComMediator::robotPoseCallback(const geometry_msgs::PoseStamped::ConstPtr &
     std::stringstream poseMsg("");
     poseMsg << msg;
     this->shout(poseMsg.str());
+}
+
+void ComMediator::robotSubAreaCallback(const std_msgs::String::ConstPtr &subarea_msg)
+{
+    // Update the robot subarea
+    robotSubAreaName = subarea_msg->data;
 }
 
 void ComMediator::experimentFeedbackCallback(const ropod_ros_msgs::ExecuteExperimentFeedbackConstPtr &ros_msg)
