@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 <launch>
-    <node name="ropod_com_mediator" pkg="ropod_com_mediator" type="ropod_com_mediator" output="screen" args="ropod_com_mediator">
+    <arg name="debug_mode" default="false"/>
+    <node name="ropod_com_mediator" pkg="ropod_com_mediator" type="ropod_com_mediator" output="screen" args="ropod_com_mediator debug_mode=$(arg debug_mode)">
         <param name="tfFrameId" type="str" value="ropod/base_link"/>
         <param name="tfFrameReferenceId" type="str" value="map"/>
         <!-- robotName param is only used if env var ROPOD_ID is not set -->

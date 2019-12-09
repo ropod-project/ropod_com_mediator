@@ -5,6 +5,7 @@
 #include <csignal>
 
 bool nodeKilled = false;
+bool debugModeActive = false;
 
 std::string getEnv(const std::string &var)
 {
@@ -20,9 +21,27 @@ std::string getEnv(const std::string &var)
     }
 }
 
+bool getDebugMode(int argc, char **argv)
+{
+    for(unsigned int i = 0; i < argc; i++)
+    {
+        std::string argument = std::string(argv[i]);
+        std::size_t found = argument.find("debug_mode=");
+        if (found != std::string::npos)
+        {
+            std::string arg_val = argument.substr(argument.find("=") + 1);
+            if (arg_val == "true")
+                debugModeActive = true;
+        }
+    }
+    return debugModeActive;
+}
+
 ComMediator::ComMediator(int argc, char **argv)
     : FTSMBase("com_mediator", {"roscore"},
-               {{"heartbeat", {{"roscore", "ros/ros_master_monitor"}}}}),
+               {{"heartbeat", {{"roscore", "ros/ros_master_monitor"}}}},
+               1, "robot_store", 27017, "components", "status",
+               "component_sm_states", getDebugMode(argc, argv)),
     ZyreBaseCommunicator(getEnv("ROPOD_ID"),
                          false, "", true, false), // print msgs, network interface, acknowledge, startImmediately
     argc(argc),
@@ -135,7 +154,7 @@ std::string ComMediator::running()
                                                                ["ros/ros_master_monitor"].c_str(), root);
     bool master_available = root["status"].asBool();
 
-    if(!zsys_interrupted && master_available)
+    if(debugModeActive || (!zsys_interrupted && master_available))
     {
         ros::spinOnce();
         rate->sleep();
