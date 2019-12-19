@@ -1,4 +1,2 @@
-build
 .git
-cmake-build-debug
-.idea*
+bin

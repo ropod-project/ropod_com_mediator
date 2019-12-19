@@ -33,7 +33,6 @@ stable image:
     CONTAINER_RELEASE_IMAGE: $CI_REGISTRY_IMAGE:stable
   stage: release
   script:
-  - echo Stable release stage triggered
   - docker pull $CONTAINER_TEST_IMAGE
   - docker tag $CONTAINER_TEST_IMAGE $CONTAINER_RELEASE_IMAGE
   - docker push $CONTAINER_RELEASE_IMAGE
@@ -46,7 +45,6 @@ latest image:
   variables:
     CONTAINER_RELEASE_IMAGE: $CI_REGISTRY_IMAGE:latest
   script:
-    - echo Latest release stage triggered
     - docker pull $CONTAINER_TEST_IMAGE
     - docker tag $CONTAINER_TEST_IMAGE $CONTAINER_RELEASE_IMAGE
     - docker push $CONTAINER_RELEASE_IMAGE
