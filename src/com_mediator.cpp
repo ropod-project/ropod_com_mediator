@@ -1,33 +1,176 @@
 #include <ropod_com_mediator/com_mediator.h>
 #include <sstream>
+#include <chrono>
+#include <thread>
+#include <csignal>
 
-ComMediator::ComMediator()
-    : ZyreBaseCommunicator("com_mediator",
-                            std::vector<std::string>{std::string("ROPOD")},
-                            std::vector<std::string>{std::string("TASK")}, false),
-    nh("~"),
-    tfListener(tfBuffer)
+bool nodeKilled = false;
+bool debugModeActive = false;
+
+std::string getEnv(const std::string &var)
 {
-    nh.param<std::string>("tfFrameId", tfFrameId, "base_link");
-    nh.param<std::string>("tfFrameReferenceId", tfFrameReferenceId, "map");
-    nh.param<std::string>("robotName", robotName, "ropod_0");
-    nh.param<double>("minSendDurationInSec", minSendDurationInSec, 1.0);
-    nh.param<std::string>("zyreGroupName", zyreGroupName, "ROPOD");
-    lastSend = ros::Time::now();
-	tfBuffer._addTransformsChangedListener(boost::bind(&ComMediator::tfCallback, this)); // call on change
+    char const* value = std::getenv(var.c_str());
+    if (value == NULL)
+    {
+        std::cerr << "Warning: environment variable " << var << " not set!" << std::endl;
+        return std::string();
+    }
+    else
+    {
+        return std::string(value);
+    }
+}
 
-    ropod_commands_pub = nh.advertise<ropod_ros_msgs::Task>("task", 1);
-    progress_sub = nh.subscribe<ropod_ros_msgs::TaskProgressGOTO>("ropod_task_feedback", 1,
-                                        &ComMediator::progressCallback, this);
+bool getDebugMode(int argc, char **argv)
+{
+    for(unsigned int i = 0; i < argc; i++)
+    {
+        std::string argument = std::string(argv[i]);
+        std::size_t found = argument.find("debug_mode=");
+        if (found != std::string::npos)
+        {
+            std::string arg_val = argument.substr(argument.find("=") + 1);
+            if (arg_val == "true")
+                debugModeActive = true;
+        }
+    }
+    return debugModeActive;
+}
 
-    elevator_request_sub = nh.subscribe<ropod_ros_msgs::ElevatorRequest>("elevator_request", 1,
+ComMediator::ComMediator(int argc, char **argv)
+    : FTSMBase("com_mediator", {"roscore"},
+               {{"heartbeat", {{"roscore", "ros/ros_master_monitor"}}}},
+               1, "robot_store", 27017, "components", "status",
+               "component_sm_states", getDebugMode(argc, argv)),
+    ZyreBaseCommunicator(getEnv("ROPOD_ID"),
+                         false, "", true, false), // print msgs, network interface, acknowledge, startImmediately
+    argc(argc),
+    argv(argv),
+    robotSubAreaName("UNKNOWN")
+{
+    std::vector<std::string> sendAcknowledgementFor;
+    sendAcknowledgementFor.push_back("TASK");
+    sendAcknowledgementFor.push_back("ROBOT-EXPERIMENT-REQUEST");
+    this->setSendAcknowledgementFor(sendAcknowledgementFor);
+
+    std::vector<std::string> expectAcknowledgementFor;
+    expectAcknowledgementFor.push_back("ROBOT-ELEVATOR-CALL-REQUEST");
+    this->setExpectAcknowledgementFor(expectAcknowledgementFor);
+
+    robotName = getEnv("ROPOD_ID");
+    std::map<std::string, std::string> headers;
+    headers["name"] = robotName + std::string("_com_mediator");
+    this->setHeaders(headers);
+
+    // start zyre node
+    this->startZyreNode();
+}
+
+ComMediator::~ComMediator() { }
+
+std::string ComMediator::init()
+{
+    this->setupRos();
+    this->joinGroup(zyreGroupName);
+    return FTSMTransitions::INITIALISED;
+}
+
+std::string ComMediator::configuring()
+{
+    return FTSMTransitions::DONE_CONFIGURING;
+}
+std::string ComMediator::ready()
+{
+    return FTSMTransitions::RUN;
+}
+
+void ComMediator::setupRos()
+{
+    ROS_INFO("Initialising ROS node");
+    ros::init(argc, argv, "com_mediator");
+    nh.reset(new ros::NodeHandle("~"));
+
+    ROS_INFO("[com_mediator] Creating a task publisher");
+    ropod_task_pub = nh->advertise<ropod_ros_msgs::Task>("task", 1);
+
+    ROS_INFO("[com_mediator] Creating a ropod_task_feedback/goto subscriber");
+    progress_goto_sub = nh->subscribe<ropod_ros_msgs::TaskProgressGOTO>("ropod_task_feedback/goto", 1,
+                                        &ComMediator::progressGOTOCallback, this);
+
+    ROS_INFO("[com_mediator] Creating a ropod_task_feedback/dock subscriber");
+    progress_dock_sub = nh->subscribe<ropod_ros_msgs::TaskProgressDOCK>("ropod_task_feedback/dock", 1,
+                                        &ComMediator::progressDOCKCallback, this);
+
+    ROS_INFO("[com_mediator] Creating an elevator_request subscriber");
+    elevator_request_sub = nh->subscribe<ropod_ros_msgs::ElevatorRequest>("elevator_request", 1,
                                         &ComMediator::elevatorRequestCallback, this);
-    elevator_request_reply_pub = nh.advertise<ropod_ros_msgs::ElevatorRequestReply>("elevator_request_reply", 1);
+
+    ROS_INFO("[com_mediator] Creating an elevator_request_reply publisher");
+    elevator_request_reply_pub = nh->advertise<ropod_ros_msgs::ElevatorRequestReply>("elevator_request_reply", 1);
+
+    ROS_INFO("[com_mediator] Creating a robot_pose subscriber");
+    robot_pose_sub = nh->subscribe<geometry_msgs::PoseStamped>("robot_pose", 1, &ComMediator::robotPoseCallback, this);
+
+    ROS_INFO("[com_mediator] Creating a robot_subarea subscriber");
+    robot_subarea_sub = nh->subscribe<std_msgs::String>("robot_subarea", 1, &ComMediator::robotSubAreaCallback, this);
+
+    ROS_INFO("[com_mediator] Creating a /ropod/execute_experiment action client");
+    this->experiment_client = std::unique_ptr<actionlib::SimpleActionClient<ropod_ros_msgs::ExecuteExperimentAction>>
+                              (new actionlib::SimpleActionClient<ropod_ros_msgs::ExecuteExperimentAction>
+                                  ("/ropod/execute_experiment", true));
+
+    ROS_INFO("[com_mediator] Creating a /ropod/transition_list subscriber");
+    this->experiment_transition_sub = nh->subscribe<ropod_ros_msgs::TransitionList>(
+            "/ropod/transition_list", 1, &ComMediator::experimentTransitionCallback, this);
+
+
+    ROS_INFO("[com_mediator] Reading ROS parameters");
+    if (robotName.empty())
+    {
+        nh->param<std::string>("robotName", robotName, "ropod_1");
+    }
+    nh->param<std::string>("zyreGroupName", zyreGroupName, "ROPOD");
+    double loop_rate;
+    nh->param<double>("loop_rate", loop_rate, 10.0);
+    rate.reset(new ros::Rate(loop_rate));
+}
+
+void ComMediator::tearDownRos()
+{
+    ropod_task_pub.shutdown();
+    progress_goto_sub.shutdown();
+    progress_dock_sub.shutdown();
+    elevator_request_sub.shutdown();
+    elevator_request_reply_pub.shutdown();
+    experiment_client->cancelAllGoals();
+}
+
+std::string ComMediator::running()
+{
+    Json::Value root;
+    Json::Reader reader;
+    bool parsingSuccessful = reader.parse(this->depend_statuses[DependMonitorTypes::HEARTBEAT]
+                                                               ["roscore"]
+                                                               ["ros/ros_master_monitor"].c_str(), root);
+    bool master_available = root["status"].asBool();
+
+    if(debugModeActive || (!zsys_interrupted && master_available))
+    {
+        ros::spinOnce();
+        rate->sleep();
+        return FTSMTransitions::CONTINUE;
+    }
+    else
+    {
+        return FTSMTransitions::RECOVER;
+    }
 
 }
 
-ComMediator::~ComMediator()
+std::string ComMediator::recovering()
 {
+    this->recoverFromPossibleDeadRosmaster();
+    return FTSMTransitions::DONE_RECOVERING;
 }
 
 void ComMediator::recvMsgCallback(ZyreMsgContent *msgContent)
@@ -41,47 +184,90 @@ void ComMediator::recvMsgCallback(ZyreMsgContent *msgContent)
         std::string errors;
         bool ok = Json::parseFromStream(json_builder, msg, &root, &errors);
 
-        Json::Value header = root["header"];
         if (root.isMember("header"))
         {
             if (root["header"]["type"] == "TASK")
             {
-                parseAndPublishTaskMessage(root);
+                this->parseAndPublishTaskMessage(root);
             }
             else if (root["header"]["type"] == "ROBOT-ELEVATOR-CALL-REPLY")
             {
-                parseAndPublishElevatorReply(root);
+                this->parseAndPublishElevatorReply(root);
+            }
+            else if (root["header"]["type"] == "ROBOT-EXPERIMENT-REQUEST")
+            {
+                this->parseAndPublishExperimentMessage(root);
             }
         }
-
     }
 }
 
-void ComMediator::progressCallback(const ropod_ros_msgs::TaskProgressGOTO::ConstPtr &ros_msg)
+void ComMediator::sendMessageStatus(const std::string &msgId, bool status)
+{
+    if (status)
+        ROS_INFO_STREAM("Sending message: " << msgId << " succeeded");
+    else
+        ROS_ERROR_STREAM("Sending message: " << msgId << " failed");
+
+    // TODO: what to do here if sending a message fails?
+    // need to call some sort of recovery action
+}
+
+///////////////////////
+// ROS to Zyre methods
+///////////////////////
+void ComMediator::progressGOTOCallback(const ropod_ros_msgs::TaskProgressGOTO::ConstPtr &ros_msg)
 {
     Json::Value msg;
 
-    msg["header"]["type"] = "TASK-PROGRESS";
+    msg["header"]["type"] = "TASK-STATUS";
+    msg["header"]["metamodel"] = "ropod-msg-schema.json";
+    msg["header"]["msgId"] = generateUUID();
+    msg["header"]["timestamp"] = getTimeStamp();
+
+    msg["payload"]["metamodel"] = "ropod-demo-progress-schema.json";
+    msg["payload"]["taskId"] = ros_msg->task_id;
+    // msg["payload"]["robotId"] = ros_msg->robot_id;
+    msg["payload"]["robotId"] = robotName;
+    msg["payload"]["taskStatus"] = ros_msg->task_status.status_code;
+    msg["payload"]["taskProgress"]["actionId"] = ros_msg->action_id;
+    msg["payload"]["taskProgress"]["actionType"] = ros_msg->action_type;
+    msg["payload"]["taskProgress"]["actionStatus"]["domain"] = ros_msg->status.domain;
+    msg["payload"]["taskProgress"]["actionStatus"]["module"] = ros_msg->status.module_code;
+    msg["payload"]["taskProgress"]["actionStatus"]["status"] = ros_msg->status.status_code;
+    msg["payload"]["taskProgress"]["area"] = ros_msg->area_name;
+
+    std::stringstream feedbackMsg("");
+    feedbackMsg << msg;
+    this->shout(feedbackMsg.str(), zyreGroupName);
+}
+
+void ComMediator::progressDOCKCallback(const ropod_ros_msgs::TaskProgressDOCK::ConstPtr &ros_msg)
+{
+    Json::Value msg;
+
+    msg["header"]["type"] = "TASK-STATUS";
     msg["header"]["metamodel"] = "ropod-msg-schema.json";
     zuuid_t * uuid = zuuid_new();
     const char * uuid_str = zuuid_str_canonical(uuid);
-    msg["header"]["msg_id"] = uuid_str;
+    msg["header"]["msgId"] = uuid_str;
     zuuid_destroy (&uuid);
     //int64_t now = zclock_time();
     char *timestr = zclock_timestr (); // TODO: this is not ISO 8601
     msg["header"]["timestamp"] = timestr;
     zstr_free(&timestr);
 
-
     msg["payload"]["metamodel"] = "ropod-demo-progress-schema.json";
     msg["payload"]["taskId"] = ros_msg->task_id;
-    msg["payload"]["robotId"] = ros_msg->robot_id;
-    msg["payload"]["actionId"] = ros_msg->action_id;
-    msg["payload"]["actionType"] = ros_msg->action_type;
-    msg["payload"]["status"]["areaName"] = ros_msg->area_name;
-    msg["payload"]["status"]["status"] = ros_msg->status;
-    msg["payload"]["status"]["sequenceNumber"] = ros_msg->sequenceNumber;
-    msg["payload"]["status"]["totalNumber"] = ros_msg->totalNumber;
+    // msg["payload"]["robotId"] = ros_msg->robot_id;
+    msg["payload"]["robotId"] = robotName;
+    msg["payload"]["taskStatus"] = ros_msg->task_status.status_code;
+    msg["payload"]["taskProgress"]["actionId"] = ros_msg->action_id;
+    msg["payload"]["taskProgress"]["actionType"] = ros_msg->action_type;
+    msg["payload"]["taskProgress"]["actionStatus"]["domain"] = ros_msg->status.domain;
+    msg["payload"]["taskProgress"]["actionStatus"]["module"] = ros_msg->status.module_code;
+    msg["payload"]["taskProgress"]["actionStatus"]["status"] = ros_msg->status.status_code;
+    msg["payload"]["taskProgress"]["area"] = ros_msg->area_name;
 
     std::stringstream feedbackMsg("");
     feedbackMsg << msg;
@@ -95,11 +281,14 @@ void ComMediator::elevatorRequestCallback(const ropod_ros_msgs::ElevatorRequest:
     msg["header"]["metamodel"] = "ropod-msg-schema.json";
     zuuid_t * uuid = zuuid_new();
     const char * uuid_str = zuuid_str_canonical(uuid);
-    msg["header"]["msg_id"] = uuid_str;
+    msg["header"]["msgId"] = uuid_str;
     zuuid_destroy (&uuid);
     //int64_t now = zclock_time();
     char *timestr = zclock_timestr (); // TODO: this is not ISO 8601
     msg["header"]["timestamp"] = timestr;
+    Json::Value receiverIds;
+    receiverIds.append("resource_manager");
+    msg["header"]["receiverIds"] = receiverIds;
     zstr_free(&timestr);
 
 
@@ -117,148 +306,228 @@ void ComMediator::elevatorRequestCallback(const ropod_ros_msgs::ElevatorRequest:
     this->shout(jsonMsg.str(), zyreGroupName);
 }
 
-void ComMediator::tfCallback()
+void ComMediator::robotPoseCallback(const geometry_msgs::PoseStamped::ConstPtr &pose_msg)
 {
-	ros::Duration maxTFCacheDuration = ros::Duration(10.0); // [s]
-	geometry_msgs::TransformStamped transform;
-	double roll,yaw,pitch;
-	try{
-		transform = tfBuffer.lookupTransform(tfFrameReferenceId, tfFrameId, ros::Time(0));
-		tf2::Quaternion q;
-		q.setX(transform.transform.rotation.x); // there is certainly a more elegant way than this ...
-		q.setY(transform.transform.rotation.y);
-		q.setZ(transform.transform.rotation.z);
-		q.setW(transform.transform.rotation.w);
-		tf2::Matrix3x3 m;
-		m.setRotation(q);
-		m.getRPY(roll,pitch, yaw);
-	}
-	catch (tf2::TransformException ex){
-		ROS_WARN("%s",ex.what());
-		return;
-	}
+    double roll,yaw,pitch;
+    tf2::Quaternion q;
+    q.setX(pose_msg->pose.orientation.x); // there is certainly a more elegant way than this ...
+    q.setY(pose_msg->pose.orientation.y);
+    q.setZ(pose_msg->pose.orientation.z);
+    q.setW(pose_msg->pose.orientation.w);
+    tf2::Matrix3x3 m;
+    m.setRotation(q);
+    m.getRPY(roll,pitch, yaw);
 
-	if ( (ros::Time::now() - transform.header.stamp) > maxTFCacheDuration ) { //simply ignore outdated TF frames
-		ROS_WARN("TF found for %s. But it is outdated. Skipping it.", tfFrameId.c_str());
-		return;
-	}
-	ROS_DEBUG("TF found for %s.", tfFrameId.c_str());
+    ROS_DEBUG("Sending Zyre message.");
 
+    /* Convert to JSON Message */
+    Json::Value msg;
+//	{
+//	  "header":{
+//	    "type":"ROBOT-POSE-2D",
+//	    "metamodel":"ropod-msg-schema.json",
+//	    "msgId":"5073dcfb-4849-42cd-a17a-ef33fa7c7a69"
+//	  },
+//	  "payload":{
+//	    "metamodel":"ropod-demo-robot-pose-2d-schema.json",
+//	    "robotId":"ropod_0",
+//	    "pose":{
+//	      "referenceId":"basement_map",
+//	      "x":10,
+//	      "y":20,
+//	      "theta":3.1415
+//	    }
+//	  }
+//	}
+    msg["header"]["type"] = "ROBOT-POSE";
+    msg["header"]["metamodel"] = "ropod-msg-schema.json";
+    msg["header"]["msgId"] = this->generateUUID();
 
-	if (ros::Time::now() - lastSend > ros::Duration(minSendDurationInSec)) { // throttld down pose messages
-		ROS_DEBUG("Sending Zyre message.");
+    char *timestr = zclock_timestr (); // TODO: this is not ISO 8601
+    msg["header"]["timestamp"] = timestr;
+    zstr_free(&timestr);
 
-		/* Convert to JSON Message */
-		Json::Value msg;
-	//	{
-	//	  "header":{
-	//	    "type":"RobotPose2D",
-	//	    "metamodel":"ropod-msg-schema.json",
-	//	    "msg_id":"5073dcfb-4849-42cd-a17a-ef33fa7c7a69"
-	//	  },
-	//	  "payload":{
-	//	    "metamodel":"ropod-demo-robot-pose-2d-schema.json",
-	//	    "robotId":"ropod_0",
-	//	    "pose":{
-	//	      "referenceId":"basement_map",
-	//	      "x":10,
-	//	      "y":20,
-	//	      "theta":3.1415
-	//	    }
-	//	  }
-	//	}
-		msg["header"]["type"] = "RobotPose2D";
-		msg["header"]["metamodel"] = "ropod-msg-schema.json";
-		zuuid_t * uuid = zuuid_new();
-		const char * uuid_str = zuuid_str_canonical(uuid);
-		msg["header"]["msg_id"] = uuid_str;
-		zuuid_destroy (&uuid);
-		//int64_t now = zclock_time();
-		char *timestr = zclock_timestr (); // TODO: this is not ISO 8601
-		msg["header"]["timestamp"] = timestr;
-		zstr_free(&timestr);
+    msg["payload"]["metamodel"] = "ropod-demo-robot-pose-2d-schema.json";
+    msg["payload"]["robotId"] = robotName;
+    msg["payload"]["subarea"] = robotSubAreaName;
+    msg["payload"]["pose"]["referenceId"] = pose_msg->header.frame_id;
+    msg["payload"]["pose"]["x"] = pose_msg->pose.position.x;
+    msg["payload"]["pose"]["y"] = pose_msg->pose.position.y;
+    msg["payload"]["pose"]["theta"] = yaw;
 
-
-		msg["payload"]["metamodel"] = "ropod-demo-robot-pose-2d-schema.json";
-		msg["payload"]["robotId"] = robotName;
-		msg["payload"]["pose"]["referenceId"] = tfFrameReferenceId;
-		msg["payload"]["pose"]["x"] = transform.transform.translation.x;
-		msg["payload"]["pose"]["y"] = transform.transform.translation.y;
-		msg["payload"]["pose"]["theta"] = yaw;
-
-		std::stringstream poseMsg("");
-		poseMsg << msg;
-        this->shout(poseMsg.str());
-		lastSend = ros::Time::now();
-	}
-
+    std::stringstream poseMsg("");
+    poseMsg << msg;
+    this->shout(poseMsg.str());
 }
 
+void ComMediator::robotSubAreaCallback(const std_msgs::String::ConstPtr &subarea_msg)
+{
+    // Update the robot subarea
+    robotSubAreaName = subarea_msg->data;
+}
+
+void ComMediator::experimentFeedbackCallback(const ropod_ros_msgs::ExecuteExperimentFeedbackConstPtr &ros_msg)
+{
+    Json::Value msg;
+    msg["header"]["type"] = "ROBOT-COMMAND-FEEDBACK";
+    msg["header"]["metamodel"] = "ropod-msg-schema.json";
+    msg["header"]["msgId"] = this->generateUUID();
+    msg["header"]["timestamp"] = ros_msg->stamp.toSec();
+
+    msg["payload"]["metamodel"] = "ropod-command-feedback-schema.json";
+    msg["payload"]["robotId"] = this->robotName;
+    msg["payload"]["command"] = ros_msg->command_name;
+    msg["payload"]["state"] = ros_msg->state;
+
+    std::stringstream jsonMsg("");
+    jsonMsg << msg;
+    this->shout(jsonMsg.str(), zyreGroupName);
+}
+
+void ComMediator::experimentResultCallback(const actionlib::SimpleClientGoalState& state,
+                                           const ropod_ros_msgs::ExecuteExperimentResultConstPtr &ros_msg)
+{
+    if (!ros_msg)
+    {
+        ROS_WARN_STREAM("experimentResultCallback got NULL result");
+        return;
+    }
+    Json::Value msg;
+    msg["header"]["type"] = "ROBOT-EXPERIMENT-FEEDBACK";
+    msg["header"]["metamodel"] = "ropod-msg-schema.json";
+    msg["header"]["msgId"] = this->generateUUID();
+    msg["header"]["timestamp"] = ros_msg->stamp.toSec();
+
+    msg["payload"]["metamodel"] = "ropod-experiment-feedback-schema.json";
+    msg["payload"]["robotId"] = this->robotName;
+    msg["payload"]["experimentType"] = ros_msg->experiment_type;
+    msg["payload"]["result"] = ros_msg->result;
+
+    std::stringstream jsonMsg("");
+    jsonMsg << msg;
+    this->shout(jsonMsg.str(), zyreGroupName);
+}
+
+void ComMediator::experimentTransitionCallback(const ropod_ros_msgs::TransitionList::ConstPtr &ros_msg)
+{
+    Json::Value msg;
+    msg["header"]["type"] = "ROBOT-EXPERIMENT-SM";
+    msg["header"]["metamodel"] = "ropod-msg-schema.json";
+    msg["header"]["msgId"] = this->generateUUID();
+    msg["header"]["timestamp"] = ros::Time::now().toSec();
+
+    msg["payload"]["metamodel"] = "ropod-experiment-transition-schema.json";
+    msg["payload"]["robotId"] = this->robotName;
+    Json::Value transitions;
+    for (int i = 0; i < ros_msg->transitions.size(); i++){
+        Json::Value transition;
+        transition["source"] = ros_msg->transitions[i].source;
+        transition["target"] = ros_msg->transitions[i].target;
+        transition["name"] = ros_msg->transitions[i].name;
+        transitions.append(transition);
+    }
+    msg["payload"]["transitions"] = transitions;
+
+    std::stringstream jsonMsg("");
+    jsonMsg << msg;
+    this->shout(jsonMsg.str(), zyreGroupName);
+}
+
+///////////////////////
+// Zyre to ROS methods
+///////////////////////
 void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
 {
     ropod_ros_msgs::Task task;
     task.task_id = root["payload"]["taskId"].asString();
-    task.start_time = root["payload"]["start_time"].asDouble();
-    task.cart_type = root["payload"]["deviceType"].asString();
-    task.cart_id = root["payload"]["deviceId"].asString();
-    for (auto robot_id : root["payload"]["teamRobotIds"])
+    ROS_INFO_STREAM("[com_mediator] Received task " << task.task_id);
+    for (auto robot_id : root["payload"]["assignedRobots"])
     {
         std::string robot_id_str = robot_id.asString();
         task.team_robot_ids.push_back(robot_id_str);
     }
-    const Json::Value &robot_action_list = root["payload"]["actions"];
-    for (int i = 0; i< robot_action_list.size(); i++)
+
+    // TODO: Convert year and time format to double?
+    // task.start_time = root["payload"]["startTime"].asDouble();
+    // task.finish_time = root["payload"]["finishTime"].asDouble();
+
+    // TODO: This needs a change on the FMS side
+    // task.earliest_start_time = root["payload"]["earliest_start_time"].asDouble();
+    // task.latest_start_time = root["payload"]["latest_start_time"].asDouble();
+    // task.load_type = root["payload"]["loadType"].asString();
+    // task.load_id = root["payload"]["loadId"].asString();
+    // task.estimated_duration = root["payload"]["estimated_duration"].asDouble();
+    // task.priority = root["payload"]["priority"].asInt();
+
+    // Try to find if a plan exists for the current robot in the full list of plans
+    const Json::Value &plan_list = root["payload"]["plan"];
+    int plan_id = -1;
+    for (unsigned int pid = 0; pid < plan_list.size(); pid++)
+    {
+        if (plan_list[pid]["_id"] == robotName)
+        {
+            plan_id = pid;
+        }
+    }
+    if (plan_id < 0)
+    {
+        ROS_INFO_STREAM("No actions for " << robotName << ". Ignoring task");
+        return;
+    }
+
+    // Process the actions present in the plan
+    const Json::Value &action_list = plan_list[plan_id]["actions"];
+    ROS_INFO_STREAM("Task has " << action_list.size() << " actions for " << robotName);
+    for (int i = 0; i< action_list.size(); i++)
     {
         ropod_ros_msgs::Action action;
-        action.action_id = robot_action_list[i]["id"].asString();
-        action.type = robot_action_list[i]["type"].asString();
-        if (action.type == "GOTO")
+        action.action_id = action_list[i]["_id"].asString();
+        action.type = action_list[i]["type"].asString();
+        if (action.type == "GOTO" || action.type == "DOCK" || action.type == "UNDOCK")
         {
-            action.execution_status = robot_action_list[i]["execution_status"].asString();
-            action.estimated_duration = robot_action_list[i]["eta"].asFloat();
-            const Json::Value &areas = robot_action_list[i]["areas"];
+            // TODO: Is this still needed?
+            // action.execution_status = action_list[i]["execution_status"].asString();
+            // action.estimated_duration = action_list[i]["eta"].asFloat();
+            const Json::Value &areas = action_list[i]["areas"];
             for (int j = 0; j < areas.size(); j++)
             {
                 ropod_ros_msgs::Area area;
-                area.area_id = areas[j]["id"].asString();
+                area.id = areas[j]["id"].asString();
                 area.name = areas[j]["name"].asString();
-                const Json::Value &wp = areas[j]["waypoints"];
+                area.type = areas[j]["type"].asString();
+                // TODO: floor number not available in the new message template
+                // area.floor_number = areas[j]["floorNumber"].asInt();
+                const Json::Value &wp = areas[j]["subareas"];
                 for (int k = 0; k < wp.size(); k++)
                 {
-                    ropod_ros_msgs::Waypoint waypoint;
-                    waypoint.semantic_id = wp[k]["semantic_id"].asString();
-                    waypoint.area_id = wp[k]["area_id"].asString();
-                    waypoint.floor_number = wp[k]["floor_number"].asInt();
-                    waypoint.waypoint_pose.position.x = wp[k]["x"].asDouble();
-                    waypoint.waypoint_pose.position.y = wp[k]["y"].asDouble();
-                    waypoint.waypoint_pose.orientation.w = 1.0;
-                    area.waypoints.push_back(waypoint);
+                    ropod_ros_msgs::SubArea sub_area;
+                    sub_area.name = wp[k]["name"].asString();
+                    sub_area.id = wp[k]["id"].asString();
+                    // TODO: subarea_type not a part of new message
+                    // sub_area.type = wp[k]["type"].asString();
+                    // if capacity is not specified, it appears as an empty string
+                    try
+                    {
+                        sub_area.capacity = wp[k]["capacity"].asInt();
+                    }
+                    catch (std::exception &e)
+                    {
+                    }
+                    area.sub_areas.push_back(sub_area);
                 }
                 action.areas.push_back(area);
-            }
-            const Json::Value &wp = robot_action_list[i]["waypoints"];
-            for (int k = 0; k < wp.size(); k++)
-            {
-                ropod_ros_msgs::Waypoint waypoint;
-                waypoint.semantic_id = wp[k]["semantic_id"].asString();
-                waypoint.area_id = wp[k]["area_id"].asString();
-                waypoint.floor_number = wp[k]["floor_number"].asInt();
-                waypoint.waypoint_pose.position.x = wp[k]["x"].asInt();
-                waypoint.waypoint_pose.position.y = wp[k]["y"].asInt();
-                waypoint.waypoint_pose.orientation.w = 1.0;
-                action.waypoints.push_back(waypoint);
             }
         }
         else if (action.type == "REQUEST_ELEVATOR")
         {
-            action.start_floor = robot_action_list[i]["startFloor"].asInt();
-            action.goal_floor = robot_action_list[i]["goalFloor"].asInt();
-            std::stringstream ss;
-            ss << robot_action_list[i] << std::endl;
+            action.start_floor = action_list[i]["start_floor"].asInt();
+            action.goal_floor = action_list[i]["goal_floor"].asInt();
+            action.elevator.elevator_id = action_list[i]["elevator_id"].asInt();
         }
         task.robot_actions.push_back(action);
     }
-    ropod_commands_pub.publish(task);
+
+    ropod_task_pub.publish(task);
 
 }
 
@@ -266,27 +535,38 @@ void ComMediator::parseAndPublishElevatorReply(const Json::Value &root)
 {
     ropod_ros_msgs::ElevatorRequestReply reply;
     reply.query_id = root["payload"]["queryId"].asString();
+    ROS_INFO_STREAM("[com_mediator] Received elevator reply: " << reply.query_id);
     reply.query_success = root["payload"]["querySuccess"].asBool();
     reply.elevator_id = root["payload"]["elevatorId"].asInt();
-    reply.elevator_waypoint = root["payload"]["elevatorWaypoint"].asString();
+    reply.elevator_door_id = root["payload"]["elevatorDoorId"].asInt();
     elevator_request_reply_pub.publish(reply);
+}
+
+void ComMediator::parseAndPublishExperimentMessage(const Json::Value &root)
+{
+    std::string experiment_type = root["payload"]["experimentType"].asString();
+    ROS_INFO("[com_mediator] Received '%s' experiment request", experiment_type.c_str());
+
+    ropod_ros_msgs::ExecuteExperimentGoal experiment_msg;
+    experiment_msg.experiment_type = experiment_type;
+    this->experiment_client->sendGoal(experiment_msg,
+                                      boost::bind(&ComMediator::experimentResultCallback, this, _1, _2),
+                                      actionlib::SimpleActionClient<ropod_ros_msgs::ExecuteExperimentAction>::SimpleActiveCallback(),
+                                      boost::bind(&ComMediator::experimentFeedbackCallback, this, _1));
 }
 
 int main(int argc, char **argv)
 {
-	ros::init(argc, argv, "ropod_com_mediator");
-
-    ComMediator com_mediator;
-
-
-    ros::NodeHandle nh("~");
-    double loop_rate = 10.0;
-    nh.param<double>("loop_rate", loop_rate, 10.0);
-    ros::Rate r(loop_rate);
-    while (ros::ok() && !zsys_interrupted)
+    ComMediator com_mediator(argc, argv);
+    com_mediator.run();
+    while(true)
     {
-	    ros::spinOnce();
-        r.sleep();
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        if (nodeKilled)
+        {
+            com_mediator.stop();
+            break;
+        }
     }
 	return 0;
 }

@@ -1,0 +1,28 @@
+version: "2"
+
+services:
+  mongo:
+    container_name: mongo
+    image: mongo:4.0-xenial
+    volumes:
+      - /data/db:/data/db
+    ports:
+      - "27017:27017"
+    network_mode: "host"
+
+  roscore:
+    container_name: roscore
+    image: ros:kinetic-ros-core
+    command: ["roscore"]
+    network_mode: "host"
+    ports:
+      - "11311:11311"
+
+  com_mediator:
+    environment:
+      - ROPOD_ID=ropod_001
+    image: git.ropod.org:4567/ropod/communication/ropod_com_mediator:latest
+    container_name: "com_mediator"
+    network_mode: "host"
+    working_dir: /ropod_com_mediator_ws
+    command: ["roslaunch", "ropod_com_mediator","com_mediator.launch", "debug_mode:=true"]

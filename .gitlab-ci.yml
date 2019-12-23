@@ -1,0 +1,52 @@
+image: docker:stable
+
+variables:
+  #DOCKER_HOST: tcp://docker:2375/
+  #DOCKER_DRIVER: overlay2
+  CONTAINER_TEST_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+
+services:
+  - name: docker:dind
+
+stages:
+  - build
+  - release
+
+before_script:
+  - docker info
+  - apk add --no-cache py-pip 
+  - pip install -qqq docker-compose==1.23.2
+  - docker-compose -v
+  - apk add --no-cache git 
+  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN git.ropod.org:4567
+  - echo $CONTAINER_TEST_IMAGE
+
+build:
+  stage: build
+  script:
+    - echo Build stage triggered
+    - docker build --pull -t $CONTAINER_TEST_IMAGE .
+    - docker push $CONTAINER_TEST_IMAGE
+
+stable image:
+  variables:
+    CONTAINER_RELEASE_IMAGE: $CI_REGISTRY_IMAGE:stable
+  stage: release
+  script:
+  - docker pull $CONTAINER_TEST_IMAGE
+  - docker tag $CONTAINER_TEST_IMAGE $CONTAINER_RELEASE_IMAGE
+  - docker push $CONTAINER_RELEASE_IMAGE
+  only:
+  - master
+  - tags
+
+latest image:
+  stage: release
+  variables:
+    CONTAINER_RELEASE_IMAGE: $CI_REGISTRY_IMAGE:latest
+  script:
+    - docker pull $CONTAINER_TEST_IMAGE
+    - docker tag $CONTAINER_TEST_IMAGE $CONTAINER_RELEASE_IMAGE
+    - docker push $CONTAINER_RELEASE_IMAGE
+  only:
+  - develop

@@ -1,10 +1,19 @@
 <?xml version="1.0"?>
 <launch>
-	<param name="tfFrameId" type="str" value="base_link"/>
-    <param name="tfFrameReferenceId" type="str" value="map"/>
-    <param name="robotName" type="str" value="ropod_0"/>
-    <param name="zyreGroupName" type="str" value="ROPOD"/>   
-    <param name="minSendDurationInSec" type="double" value="0.1"/> 
-
-    <node name="ropod_com_mediator" pkg="ropod_com_mediator" type="ropod_com_mediator" output="screen" args="ropod_com_mediator" />
+    <arg name="debug_mode" default="false"/>
+    <node name="ropod_com_mediator" pkg="ropod_com_mediator" type="ropod_com_mediator" output="screen" args="ropod_com_mediator debug_mode=$(arg debug_mode)">
+        <param name="tfFrameId" type="str" value="ropod/base_link"/>
+        <param name="tfFrameReferenceId" type="str" value="map"/>
+        <!-- robotName param is only used if env var ROPOD_ID is not set -->
+        <param name="robotName" type="str" value="ropod_001"/>
+        <param name="zyreGroupName" type="str" value="ROPOD"/>
+        <param name="minSendDurationInSec" type="double" value="0.1"/>
+        <remap from="~robot_pose" to="/ropod/pose"/>
+	    <remap from="~robot_subarea" to="/ropod/subarea" />
+    </node>
+    <node name="robot_pose_publisher" pkg="ropod_com_mediator" type="robot_pose_publisher.py" output="screen">
+        <param name="reference_frame" type="str" value="map"/>
+        <param name="target_frame" type="str" value="ropod/base_link"/>
+        <remap from="~pose" to="/ropod/pose"/>
+    </node>
 </launch>

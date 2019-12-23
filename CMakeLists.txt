@@ -11,6 +11,7 @@ set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 
 set(INSTALL_DIR /usr/lib CACHE PATH "Installation directory for mediator")
 
+include(/opt/ropod/ropod_common/ropodcpp/ftsm/CMakeLists.txt)
 
 ########################################################################
 # ROS dependency
@@ -26,7 +27,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 include_directories(
     include
-    /opt/ropod/ropod_common/zyre_communicator/include
+    /opt/ropod/ropod_common/ropodcpp/zyre_communicator/include
     ${catkin_INCLUDE_DIRS}
 )
 
@@ -102,12 +103,16 @@ ENDIF (JSONCPP_FOUND)
 #set(HEADER_FILES ${PROJECT_SOURCE_DIR}/include/mediator.h)
 
 add_executable(ropod_comm_mediator_test ${PROJECT_SOURCE_DIR}/src/test.cpp ${HEADER_FILES})
-add_dependencies(ropod_comm_mediator_test ropod_ros_msgs_gencpp)
+add_dependencies(ropod_comm_mediator_test ropod_ros_msgs_generate_messages_cpp)
 target_link_libraries(ropod_comm_mediator_test ${LIBS})
 
 add_executable(ropod_com_mediator
     ${PROJECT_SOURCE_DIR}/src/com_mediator.cpp
     ${HEADER_FILES}
-    /opt/ropod/ropod_common/zyre_communicator/src/ZyreBaseCommunicator.cpp)
-add_dependencies(ropod_com_mediator ropod_ros_msgs_gencpp)
-target_link_libraries(ropod_com_mediator ${LIBS}  ${catkin_LIBRARIES})
+    /opt/ropod/ropod_common/ropodcpp/zyre_communicator/src/ZyreBaseCommunicator.cpp
+    /opt/ropod/ropod_common/ropodcpp/ftsm/src/ftsm_base.cpp
+    /opt/ropod/ftsm/cppftsm/src/ftsm.cpp
+)
+
+add_dependencies(ropod_com_mediator ropod_ros_msgs_generate_messages_cpp)
+target_link_libraries(ropod_com_mediator ${LIBS} ${catkin_LIBRARIES} ${FTSM_LIBRARIES})
