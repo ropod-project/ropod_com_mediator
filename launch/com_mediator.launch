@@ -10,10 +10,15 @@
         <param name="minSendDurationInSec" type="double" value="0.1"/>
         <remap from="~robot_pose" to="/ropod/pose"/>
 	    <remap from="~robot_subarea" to="/ropod/subarea" />
+	    <remap from="~command" to="/ropod/remote_command" />
     </node>
     <node name="robot_pose_publisher" pkg="ropod_com_mediator" type="robot_pose_publisher.py" output="screen">
         <param name="reference_frame" type="str" value="map"/>
         <param name="target_frame" type="str" value="ropod/base_link"/>
         <remap from="~pose" to="/ropod/pose"/>
+    </node>
+    <node name="robot_command_processor" pkg="ropod_com_mediator" type="robot_command_processor.py" output="screen">
+        <remap from="~command" to="/ropod/remote_command"/>
+        <remap from="~joypad" to="/joy"/>
     </node>
 </launch>

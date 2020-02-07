@@ -48,6 +48,7 @@ private:
     ros::Subscriber progress_dock_sub;
     ros::Subscriber elevator_request_sub;
     ros::Publisher elevator_request_reply_pub;
+    ros::Publisher remote_command_pub;
 
     // remote monitoring
     ros::Subscriber experiment_transition_sub;
@@ -66,6 +67,7 @@ private:
     void parseAndPublishTaskMessage(const Json::Value &root);
     void parseAndPublishElevatorReply(const Json::Value &root);
     void parseAndPublishExperimentMessage(const Json::Value &root);
+    void parseAndPublishCommandMessage(const Json::Value &root);
 
 public:
     ComMediator(int argc, char**argv);
