@@ -108,6 +108,9 @@ void ComMediator::setupRos()
     ROS_INFO("[com_mediator] Creating an elevator_request_reply publisher");
     elevator_request_reply_pub = nh->advertise<ropod_ros_msgs::ElevatorRequestReply>("elevator_request_reply", 1);
 
+    ROS_INFO("[com_mediator] Creating an remote_command publisher");
+    remote_command_pub = nh->advertise<std_msgs::String>("command", 1);
+
     ROS_INFO("[com_mediator] Creating a robot_pose subscriber");
     robot_pose_sub = nh->subscribe<geometry_msgs::PoseStamped>("robot_pose", 1, &ComMediator::robotPoseCallback, this);
 
@@ -197,6 +200,10 @@ void ComMediator::recvMsgCallback(ZyreMsgContent *msgContent)
             else if (root["header"]["type"] == "ROBOT-EXPERIMENT-REQUEST")
             {
                 this->parseAndPublishExperimentMessage(root);
+            }
+            else if (root["header"]["type"] == "ROBOT-COMMAND")
+            {
+                this->parseAndPublishCommandMessage(root);
             }
         }
     }
@@ -553,6 +560,21 @@ void ComMediator::parseAndPublishExperimentMessage(const Json::Value &root)
                                       boost::bind(&ComMediator::experimentResultCallback, this, _1, _2),
                                       actionlib::SimpleActionClient<ropod_ros_msgs::ExecuteExperimentAction>::SimpleActiveCallback(),
                                       boost::bind(&ComMediator::experimentFeedbackCallback, this, _1));
+}
+
+void ComMediator::parseAndPublishCommandMessage(const Json::Value &root)
+{
+    std::string target_robot_id = root["header"]["robotId"].asString();
+    std::string command = root["payload"]["command"].asString();
+    if (target_robot_id != getEnv("ROPOD_ID"))
+    {
+        ROS_INFO_STREAM("[com_mediator] Ignoring '" << command << "' command for robot " << target_robot_id);
+        return;
+    }
+    ROS_INFO("[com_mediator] Received '%s' command", command.c_str());
+    std_msgs::String msg;
+    msg.data = command;
+    remote_command_pub.publish(msg);
 }
 
 int main(int argc, char **argv)
