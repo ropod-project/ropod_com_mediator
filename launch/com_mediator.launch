@@ -20,5 +20,6 @@
     <node name="robot_command_processor" pkg="ropod_com_mediator" type="robot_command_processor.py" output="screen">
         <remap from="~command" to="/ropod/remote_command"/>
         <remap from="~joypad" to="/joy"/>
+        <remap from="~nav_pause" to="/ropod/napoleon/pause"/>
     </node>
 </launch>
