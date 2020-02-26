@@ -63,7 +63,8 @@ private:
     std::string zyreGroupName;
     std::string robotSubAreaName;
 
-    void parseAndPublishTaskMessage(const Json::Value &root);
+    void parseTaskMessage(const Json::Value &root, ropod_ros_msgs::Task& task_msg);
+    virtual void publishTaskMessage(const ropod_ros_msgs::Task& task_msg);
     void parseAndPublishElevatorReply(const Json::Value &root);
     void parseAndPublishExperimentMessage(const Json::Value &root);
 

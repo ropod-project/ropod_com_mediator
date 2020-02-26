@@ -188,7 +188,9 @@ void ComMediator::recvMsgCallback(ZyreMsgContent *msgContent)
         {
             if (root["header"]["type"] == "TASK")
             {
-                this->parseAndPublishTaskMessage(root);
+                ropod_ros_msgs::Task task_msg;
+                this->parseTaskMessage(root, task_msg);
+                this->publishTaskMessage(task_msg);
             }
             else if (root["header"]["type"] == "ROBOT-ELEVATOR-CALL-REPLY")
             {
@@ -436,9 +438,8 @@ void ComMediator::experimentTransitionCallback(const ropod_ros_msgs::TransitionL
 ///////////////////////
 // Zyre to ROS methods
 ///////////////////////
-void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
+void ComMediator::parseTaskMessage(const Json::Value &root, ropod_ros_msgs::Task& task)
 {
-    ropod_ros_msgs::Task task;
     task.task_id = root["payload"]["taskId"].asString();
     ROS_INFO_STREAM("[com_mediator] Received task " << task.task_id);
     for (auto robot_id : root["payload"]["assignedRobots"])
@@ -526,9 +527,11 @@ void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
         }
         task.robot_actions.push_back(action);
     }
+}
 
-    ropod_task_pub.publish(task);
-
+void ComMediator::publishTaskMessage(const ropod_ros_msgs::Task& task_msg)
+{
+    ropod_task_pub.publish(task_msg);
 }
 
 void ComMediator::parseAndPublishElevatorReply(const Json::Value &root)
