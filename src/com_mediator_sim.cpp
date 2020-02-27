@@ -74,7 +74,18 @@ void ComMediatorSim::tearDownRos()
 void ComMediatorSim::publishTaskMessage(const ropod_ros_msgs::Task& task_msg)
 {
     ROS_INFO("[ComMediator] Filtering out all actions other than GOTO before publishing the task to task executor!");
-    ropod_task_pub.publish(task_msg);
+    ropod_ros_msgs::Task msg_copy = task_msg;
+    for (auto itr = msg_copy.robot_actions.begin(); itr != msg_copy.robot_actions.end(); )
+    {
+        if (itr->type != "GOTO")
+        {
+            ROS_INFO("\t[ComMediator] Removed Action (%s) of type (%s)", itr->action_id.c_str(), itr->type.c_str());
+            itr = msg_copy.robot_actions.erase(itr);
+        }
+        else
+            ++itr;
+    }
+    ropod_task_pub.publish(msg_copy);
 }
 
 int main(int argc, char **argv)
