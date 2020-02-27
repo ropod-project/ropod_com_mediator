@@ -3,25 +3,15 @@
     <arg name="robot_name" default="ropod_001"/>
     <arg name="debug_mode" default="false"/>
     <arg name="sim_mode" default="true"/>
+
     <node name="ropod_com_mediator" pkg="ropod_com_mediator" type="ropod_com_mediator" 
         output="screen" args="ropod_com_mediator robot_name=$(arg robot_name) debug_mode=$(arg debug_mode) sim_mode=$(arg sim_mode)">
-        <!-- <param name="tfFrameId" type="str" value="ropod/base_link"/>
-        <param name="tfFrameReferenceId" type="str" value="map"/> -->
-        <!-- robotName param is only used if env var ROPOD_ID is not set -->
-        <param name="robotName" type="str" value="ropod_001"/>
         <param name="zyreGroupName" type="str" value="ROPOD"/>
-        <param name="minSendDurationInSec" type="double" value="0.1"/>
 
         <!-- <remap from="~robot_pose" to="/$(arg robot_name)/pose"/>
-        <remap from="~robot_subarea" to="/$(arg robot_name)/subarea" />
-
-        <remap from="/ropod/execute_experiment/cancel" to="/$(arg robot_name)/execute_experiment/cancel"/>
-        <remap from="/ropod/execute_experiment/feedback" to="/$(arg robot_name)/execute_experiment/feedback"/>
-        <remap from="/ropod/execute_experiment/goal" to="/$(arg robot_name)/execute_experiment/goal"/>
-        <remap from="/ropod/execute_experiment/result" to="/$(arg robot_name)/execute_experiment/result"/>
-        <remap from="/ropod/execute_experiment/status" to="/$(arg robot_name)/execute_experiment/status"/>
-        <remap from="/ropod/transition_list" to="/$(arg robot_name)/transition_list"/> -->
+        <remap from="~robot_subarea" to="/$(arg robot_name)/subarea" /> -->
     </node>
+
     <!-- <node name="robot_pose_publisher" pkg="ropod_com_mediator" type="robot_pose_publisher.py" output="screen">
         <param name="reference_frame" type="str" value="map"/>
         <param name="target_frame" type="str" value="$(arg robot_name)/base_link"/>

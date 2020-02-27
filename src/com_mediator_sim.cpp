@@ -49,10 +49,6 @@ void ComMediatorSim::setupRos()
     // setupExperimentTransitionSubscriber();
 
     ROS_INFO("[com_mediator] Reading ROS parameters");
-    if (robotName.empty())
-    {
-        nh->param<std::string>("robotName", robotName, "ropod_1");
-    }
     nh->param<std::string>("zyreGroupName", zyreGroupName, "ROPOD");
     double loop_rate;
     nh->param<double>("loop_rate", loop_rate, 10.0);
