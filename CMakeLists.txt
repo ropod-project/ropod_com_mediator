@@ -108,6 +108,7 @@ target_link_libraries(ropod_comm_mediator_test ${LIBS})
 
 add_executable(ropod_com_mediator
     ${PROJECT_SOURCE_DIR}/src/com_mediator.cpp
+    ${PROJECT_SOURCE_DIR}/src/com_mediator_sim.cpp
     ${HEADER_FILES}
     /opt/ropod/ropod_common/ropodcpp/zyre_communicator/src/ZyreBaseCommunicator.cpp
     /opt/ropod/ropod_common/ropodcpp/ftsm/src/ftsm_base.cpp

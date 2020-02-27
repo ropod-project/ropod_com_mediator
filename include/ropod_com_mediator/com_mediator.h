@@ -36,11 +36,12 @@ using namespace ftsm;
 
 class ComMediator : public FTSMBase, public ZyreBaseCommunicator
 {
-private:
+protected:
     int argc;
     char **argv;
     std::shared_ptr<ros::NodeHandle> nh;
     std::shared_ptr<ros::Rate> rate;
+    bool debug_mode;
 
     // task execution
     ros::Publisher ropod_task_pub;
@@ -68,8 +69,17 @@ private:
     void parseAndPublishElevatorReply(const Json::Value &root);
     void parseAndPublishExperimentMessage(const Json::Value &root);
 
+    void setupTaskPublisher();
+    void setupGotoSubscriber();
+    void setupDockSubscriber();
+    void setupElevatorRequestPubSub();
+    void setupRobotPoseSubscriber();
+    void setupRobotSubareaSubscriber();
+    void setupExecuteExperiementActionClient();
+    void setupExperimentTransitionSubscriber();
+
 public:
-    ComMediator(int argc, char**argv);
+    ComMediator(int argc, char**argv, bool debug);
     virtual ~ComMediator();
 
     virtual void recvMsgCallback(ZyreMsgContent *msgContent);

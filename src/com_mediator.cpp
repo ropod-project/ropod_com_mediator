@@ -4,9 +4,6 @@
 #include <thread>
 #include <csignal>
 
-bool nodeKilled = false;
-bool debugModeActive = false;
-
 std::string getEnv(const std::string &var)
 {
     char const* value = std::getenv(var.c_str());
@@ -21,32 +18,17 @@ std::string getEnv(const std::string &var)
     }
 }
 
-bool getDebugMode(int argc, char **argv)
-{
-    for(unsigned int i = 0; i < argc; i++)
-    {
-        std::string argument = std::string(argv[i]);
-        std::size_t found = argument.find("debug_mode=");
-        if (found != std::string::npos)
-        {
-            std::string arg_val = argument.substr(argument.find("=") + 1);
-            if (arg_val == "true")
-                debugModeActive = true;
-        }
-    }
-    return debugModeActive;
-}
-
-ComMediator::ComMediator(int argc, char **argv)
+ComMediator::ComMediator(int argc, char **argv, bool debug)
     : FTSMBase("com_mediator", {"roscore"},
                {{"heartbeat", {{"roscore", "ros/ros_master_monitor"}}}},
                1, "robot_store", 27017, "components", "status",
-               "component_sm_states", getDebugMode(argc, argv)),
+               "component_sm_states", debug),
     ZyreBaseCommunicator(getEnv("ROPOD_ID"),
                          false, "", true, false), // print msgs, network interface, acknowledge, startImmediately
     argc(argc),
     argv(argv),
-    robotSubAreaName("UNKNOWN")
+    robotSubAreaName("UNKNOWN"),
+    debug_mode(debug)
 {
     std::vector<std::string> sendAcknowledgementFor;
     sendAcknowledgementFor.push_back("TASK");
@@ -86,43 +68,16 @@ std::string ComMediator::ready()
 
 void ComMediator::setupRos()
 {
-    ROS_INFO("Initialising ROS node");
-    ros::init(argc, argv, "com_mediator");
     nh.reset(new ros::NodeHandle("~"));
 
-    ROS_INFO("[com_mediator] Creating a task publisher");
-    ropod_task_pub = nh->advertise<ropod_ros_msgs::Task>("task", 1);
-
-    ROS_INFO("[com_mediator] Creating a ropod_task_feedback/goto subscriber");
-    progress_goto_sub = nh->subscribe<ropod_ros_msgs::TaskProgressGOTO>("ropod_task_feedback/goto", 1,
-                                        &ComMediator::progressGOTOCallback, this);
-
-    ROS_INFO("[com_mediator] Creating a ropod_task_feedback/dock subscriber");
-    progress_dock_sub = nh->subscribe<ropod_ros_msgs::TaskProgressDOCK>("ropod_task_feedback/dock", 1,
-                                        &ComMediator::progressDOCKCallback, this);
-
-    ROS_INFO("[com_mediator] Creating an elevator_request subscriber");
-    elevator_request_sub = nh->subscribe<ropod_ros_msgs::ElevatorRequest>("elevator_request", 1,
-                                        &ComMediator::elevatorRequestCallback, this);
-
-    ROS_INFO("[com_mediator] Creating an elevator_request_reply publisher");
-    elevator_request_reply_pub = nh->advertise<ropod_ros_msgs::ElevatorRequestReply>("elevator_request_reply", 1);
-
-    ROS_INFO("[com_mediator] Creating a robot_pose subscriber");
-    robot_pose_sub = nh->subscribe<geometry_msgs::PoseStamped>("robot_pose", 1, &ComMediator::robotPoseCallback, this);
-
-    ROS_INFO("[com_mediator] Creating a robot_subarea subscriber");
-    robot_subarea_sub = nh->subscribe<std_msgs::String>("robot_subarea", 1, &ComMediator::robotSubAreaCallback, this);
-
-    ROS_INFO("[com_mediator] Creating a /ropod/execute_experiment action client");
-    this->experiment_client = std::unique_ptr<actionlib::SimpleActionClient<ropod_ros_msgs::ExecuteExperimentAction>>
-                              (new actionlib::SimpleActionClient<ropod_ros_msgs::ExecuteExperimentAction>
-                                  ("/ropod/execute_experiment", true));
-
-    ROS_INFO("[com_mediator] Creating a /ropod/transition_list subscriber");
-    this->experiment_transition_sub = nh->subscribe<ropod_ros_msgs::TransitionList>(
-            "/ropod/transition_list", 1, &ComMediator::experimentTransitionCallback, this);
-
+    setupTaskPublisher();
+    setupGotoSubscriber();
+    setupDockSubscriber();
+    setupElevatorRequestPubSub();
+    setupRobotPoseSubscriber();
+    setupRobotSubareaSubscriber();
+    setupExecuteExperiementActionClient();
+    setupExperimentTransitionSubscriber();
 
     ROS_INFO("[com_mediator] Reading ROS parameters");
     if (robotName.empty())
@@ -133,6 +88,63 @@ void ComMediator::setupRos()
     double loop_rate;
     nh->param<double>("loop_rate", loop_rate, 10.0);
     rate.reset(new ros::Rate(loop_rate));
+}
+
+void ComMediator::setupTaskPublisher()
+{
+    ROS_INFO("[com_mediator] Creating a task publisher");
+    ropod_task_pub = nh->advertise<ropod_ros_msgs::Task>("task", 1);
+}
+
+void ComMediator::setupGotoSubscriber()
+{
+    ROS_INFO("[com_mediator] Creating a ropod_task_feedback/goto subscriber");
+    progress_goto_sub = nh->subscribe<ropod_ros_msgs::TaskProgressGOTO>("ropod_task_feedback/goto", 1,
+                                        &ComMediator::progressGOTOCallback, this);
+}
+
+void ComMediator::setupDockSubscriber()
+{
+    ROS_INFO("[com_mediator] Creating a ropod_task_feedback/dock subscriber");
+    progress_dock_sub = nh->subscribe<ropod_ros_msgs::TaskProgressDOCK>("ropod_task_feedback/dock", 1,
+                                        &ComMediator::progressDOCKCallback, this);
+}
+
+void ComMediator::setupElevatorRequestPubSub()
+{
+    ROS_INFO("[com_mediator] Creating an elevator_request subscriber");
+    elevator_request_sub = nh->subscribe<ropod_ros_msgs::ElevatorRequest>("elevator_request", 1,
+                                        &ComMediator::elevatorRequestCallback, this);
+
+    ROS_INFO("[com_mediator] Creating an elevator_request_reply publisher");
+    elevator_request_reply_pub = nh->advertise<ropod_ros_msgs::ElevatorRequestReply>("elevator_request_reply", 1);
+}
+
+void ComMediator::setupRobotPoseSubscriber()
+{
+    ROS_INFO("[com_mediator] Creating a robot_pose subscriber");
+    robot_pose_sub = nh->subscribe<geometry_msgs::PoseStamped>("robot_pose", 1, &ComMediator::robotPoseCallback, this);
+}
+
+void ComMediator::setupRobotSubareaSubscriber()
+{
+    ROS_INFO("[com_mediator] Creating a robot_subarea subscriber");
+    robot_subarea_sub = nh->subscribe<std_msgs::String>("robot_subarea", 1, &ComMediator::robotSubAreaCallback, this);
+}
+
+void ComMediator::setupExecuteExperiementActionClient()
+{
+    ROS_INFO("[com_mediator] Creating a /ropod/execute_experiment action client");
+    this->experiment_client = std::unique_ptr<actionlib::SimpleActionClient<ropod_ros_msgs::ExecuteExperimentAction>>
+                              (new actionlib::SimpleActionClient<ropod_ros_msgs::ExecuteExperimentAction>
+                                  ("/ropod/execute_experiment", true));
+}
+
+void ComMediator::setupExperimentTransitionSubscriber()
+{
+    ROS_INFO("[com_mediator] Creating a /ropod/transition_list subscriber");
+    this->experiment_transition_sub = nh->subscribe<ropod_ros_msgs::TransitionList>(
+            "/ropod/transition_list", 1, &ComMediator::experimentTransitionCallback, this);
 }
 
 void ComMediator::tearDownRos()
@@ -154,7 +166,7 @@ std::string ComMediator::running()
                                                                ["ros/ros_master_monitor"].c_str(), root);
     bool master_available = root["status"].asBool();
 
-    if(debugModeActive || (!zsys_interrupted && master_available))
+    if(debug_mode || (!zsys_interrupted && master_available))
     {
         ros::spinOnce();
         rate->sleep();
@@ -556,20 +568,4 @@ void ComMediator::parseAndPublishExperimentMessage(const Json::Value &root)
                                       boost::bind(&ComMediator::experimentResultCallback, this, _1, _2),
                                       actionlib::SimpleActionClient<ropod_ros_msgs::ExecuteExperimentAction>::SimpleActiveCallback(),
                                       boost::bind(&ComMediator::experimentFeedbackCallback, this, _1));
-}
-
-int main(int argc, char **argv)
-{
-    ComMediator com_mediator(argc, argv);
-    com_mediator.run();
-    while(true)
-    {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        if (nodeKilled)
-        {
-            com_mediator.stop();
-            break;
-        }
-    }
-	return 0;
 }
