@@ -102,17 +102,17 @@ int main(int argc, char **argv)
     ComMediator* com_mediator = NULL;
     if (sim)
     {
-        ROS_INFO("[ComMediator] Creating a ComMediator simulation object");
+        ROS_INFO("[ComMediator] Creating a ComMediator simulation object for robot %s", robot_name.c_str());
         com_mediator = new ComMediatorSim(argc, argv, robot_name);
     }
     else if (debug)
     {
-        ROS_INFO("[ComMediator] Creating a ComMediator debug object");
+        ROS_INFO("[ComMediator] Creating a ComMediator debug object for robot %s", robot_name.c_str());
         com_mediator = new ComMediator(argc, argv, robot_name, true);
     }
     else
     {
-        ROS_INFO("[ComMediator] Creating a ComMediator object");
+        ROS_INFO("[ComMediator] Creating a ComMediator object for robot %s", robot_name.c_str());
         com_mediator = new ComMediator(argc, argv, robot_name, false);
     }
 
