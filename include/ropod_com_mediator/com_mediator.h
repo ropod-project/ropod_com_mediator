@@ -79,7 +79,7 @@ protected:
     void setupExperimentTransitionSubscriber();
 
 public:
-    ComMediator(int argc, char**argv, bool debug);
+    ComMediator(int argc, char**argv, const std::string& robot_name, bool debug);
     virtual ~ComMediator();
 
     virtual void recvMsgCallback(ZyreMsgContent *msgContent);

@@ -2,25 +2,30 @@
 #include <chrono>
 #include <thread>
 
-bool getModeStatus(int argc, char **argv, const std::string modeName="debug_mode")
+std::string getArgValue(int argc, char **argv, const std::string& argName="debug_mode", const std::string& defaultArgVal="")
 {
-    bool mode = false;
+    std::string argVal = defaultArgVal;
     for(unsigned int i = 0; i < argc; i++)
     {
         std::string argument = std::string(argv[i]);
-        std::size_t found = argument.find(modeName);
+        std::size_t found = argument.find(argName + std::string("="));
         if (found != std::string::npos)
         {
-            std::string arg_val = argument.substr(argument.find("=") + 1);
-            mode = (arg_val == "true");
+            argVal = argument.substr(argument.find("=") + 1);
             break;
         }
     }
-    return mode;
+    return argVal;
 }
 
-ComMediatorSim::ComMediatorSim(int argc, char **argv)
-    : ComMediator(argc, argv, true)
+bool getModeStatus(int argc, char **argv, const std::string& modeName="debug_mode")
+{
+    std::string argVal = getArgValue(argc, argv, modeName);
+    return argVal == "true";
+}
+
+ComMediatorSim::ComMediatorSim(int argc, char **argv, const std::string& robot_name)
+    : ComMediator(argc, argv, robot_name, true)
 {
 }
 
@@ -73,19 +78,22 @@ void ComMediatorSim::tearDownRos()
 
 void ComMediatorSim::publishTaskMessage(const ropod_ros_msgs::Task& task_msg)
 {
-    ROS_INFO("[ComMediator] Filtering out all actions other than GOTO before publishing the task to task executor!");
-    ropod_ros_msgs::Task msg_copy = task_msg;
-    for (auto itr = msg_copy.robot_actions.begin(); itr != msg_copy.robot_actions.end(); )
+    if (!task_msg.robot_actions.empty())
     {
-        if (itr->type != "GOTO")
+        ROS_INFO("[ComMediator] Filtering out all actions other than GOTO before publishing the task to task executor!");
+        ropod_ros_msgs::Task msg_copy = task_msg;
+        for (auto itr = msg_copy.robot_actions.begin(); itr != msg_copy.robot_actions.end(); )
         {
-            ROS_INFO("\t[ComMediator] Removed Action (%s) of type (%s)", itr->action_id.c_str(), itr->type.c_str());
-            itr = msg_copy.robot_actions.erase(itr);
+            if (itr->type != "GOTO")
+            {
+                ROS_INFO("\t[ComMediator] Removed Action (%s) of type (%s)", itr->action_id.c_str(), itr->type.c_str());
+                itr = msg_copy.robot_actions.erase(itr);
+            }
+            else
+                ++itr;
         }
-        else
-            ++itr;
+        ComMediator::publishTaskMessage(msg_copy);
     }
-    ropod_task_pub.publish(msg_copy);
 }
 
 int main(int argc, char **argv)
@@ -93,22 +101,23 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "com_mediator");
     bool debug = getModeStatus(argc, argv, "debug_mode");
     bool sim = getModeStatus(argc, argv, "sim_mode");
+    std::string robot_name = getArgValue(argc, argv, "robot_name", "ropod_001");
 
     ComMediator* com_mediator = NULL;
     if (sim)
     {
         ROS_INFO("[ComMediator] Creating a ComMediator simulation object");
-        com_mediator = new ComMediatorSim(argc, argv);
+        com_mediator = new ComMediatorSim(argc, argv, robot_name);
     }
     else if (debug)
     {
         ROS_INFO("[ComMediator] Creating a ComMediator debug object");
-        com_mediator = new ComMediator(argc, argv, true);
+        com_mediator = new ComMediator(argc, argv, robot_name, true);
     }
     else
     {
         ROS_INFO("[ComMediator] Creating a ComMediator object");
-        com_mediator = new ComMediator(argc, argv, false);
+        com_mediator = new ComMediator(argc, argv, robot_name, false);
     }
 
     if (com_mediator != NULL)

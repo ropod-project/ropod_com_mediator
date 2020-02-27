@@ -10,7 +10,7 @@ protected:
     virtual void publishTaskMessage(const ropod_ros_msgs::Task& task_msg);
 
 public:
-    ComMediatorSim(int argc, char**argv);
+    ComMediatorSim(int argc, char**argv, const std::string& robot_name);
     virtual ~ComMediatorSim();
 
     virtual void setupRos();

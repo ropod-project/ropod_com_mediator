@@ -4,31 +4,18 @@
 #include <thread>
 #include <csignal>
 
-std::string getEnv(const std::string &var)
-{
-    char const* value = std::getenv(var.c_str());
-    if (value == NULL)
-    {
-        std::cerr << "Warning: environment variable " << var << " not set!" << std::endl;
-        return std::string();
-    }
-    else
-    {
-        return std::string(value);
-    }
-}
-
-ComMediator::ComMediator(int argc, char **argv, bool debug)
+ComMediator::ComMediator(int argc, char **argv, const std::string& robot_name, bool debug)
     : FTSMBase("com_mediator", {"roscore"},
                {{"heartbeat", {{"roscore", "ros/ros_master_monitor"}}}},
                1, "robot_store", 27017, "components", "status",
                "component_sm_states", debug),
-    ZyreBaseCommunicator(getEnv("ROPOD_ID"),
+    ZyreBaseCommunicator(robot_name,
                          false, "", true, false), // print msgs, network interface, acknowledge, startImmediately
     argc(argc),
     argv(argv),
     robotSubAreaName("UNKNOWN"),
-    debug_mode(debug)
+    debug_mode(debug),
+    robotName(robot_name)
 {
     std::vector<std::string> sendAcknowledgementFor;
     sendAcknowledgementFor.push_back("TASK");
@@ -39,7 +26,6 @@ ComMediator::ComMediator(int argc, char **argv, bool debug)
     expectAcknowledgementFor.push_back("ROBOT-ELEVATOR-CALL-REQUEST");
     this->setExpectAcknowledgementFor(expectAcknowledgementFor);
 
-    robotName = getEnv("ROPOD_ID");
     std::map<std::string, std::string> headers;
     headers["name"] = robotName + std::string("_com_mediator");
     this->setHeaders(headers);
@@ -543,7 +529,8 @@ void ComMediator::parseTaskMessage(const Json::Value &root, ropod_ros_msgs::Task
 
 void ComMediator::publishTaskMessage(const ropod_ros_msgs::Task& task_msg)
 {
-    ropod_task_pub.publish(task_msg);
+    if (!task_msg.robot_actions.empty())
+        ropod_task_pub.publish(task_msg);
 }
 
 void ComMediator::parseAndPublishElevatorReply(const Json::Value &root)
