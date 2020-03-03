@@ -57,6 +57,7 @@ void ComMediator::setupRos()
     nh.reset(new ros::NodeHandle("~"));
 
     setupTaskPublisher();
+    setupRemoteCommandPublisher();
     setupGotoSubscriber();
     setupDockSubscriber();
     setupElevatorRequestPubSub();
@@ -64,9 +65,6 @@ void ComMediator::setupRos()
     setupRobotSubareaSubscriber();
     setupExecuteExperiementActionClient();
     setupExperimentTransitionSubscriber();
-
-    ROS_INFO("[com_mediator] Creating an remote_command publisher");
-    remote_command_pub = nh->advertise<std_msgs::String>("command", 1);
 
     ROS_INFO("[com_mediator] Reading ROS parameters");
     nh->param<std::string>("zyreGroupName", zyreGroupName, "ROPOD");
@@ -79,6 +77,12 @@ void ComMediator::setupTaskPublisher()
 {
     ROS_INFO("[com_mediator] Creating a task publisher");
     ropod_task_pub = nh->advertise<ropod_ros_msgs::Task>("task", 1);
+}
+
+void ComMediator::setupRemoteCommandPublisher()
+{
+    ROS_INFO("[com_mediator] Creating an remote_command publisher");
+    remote_command_pub = nh->advertise<std_msgs::String>("command", 1);
 }
 
 void ComMediator::setupGotoSubscriber()
@@ -564,7 +568,7 @@ void ComMediator::parseAndPublishCommandMessage(const Json::Value &root)
 {
     std::string target_robot_id = root["header"]["robotId"].asString();
     std::string command = root["payload"]["command"].asString();
-    if (target_robot_id != getEnv("ROPOD_ID"))
+    if (target_robot_id != robotName)
     {
         ROS_INFO_STREAM("[com_mediator] Ignoring '" << command << "' command for robot " << target_robot_id);
         return;
@@ -574,4 +578,3 @@ void ComMediator::parseAndPublishCommandMessage(const Json::Value &root)
     msg.data = command;
     remote_command_pub.publish(msg);
 }
-

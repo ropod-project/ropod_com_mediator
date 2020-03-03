@@ -72,6 +72,7 @@ protected:
     void parseAndPublishCommandMessage(const Json::Value &root);
 
     void setupTaskPublisher();
+    void setupRemoteCommandPublisher();
     void setupGotoSubscriber();
     void setupDockSubscriber();
     void setupElevatorRequestPubSub();
