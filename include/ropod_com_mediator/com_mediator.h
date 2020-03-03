@@ -49,6 +49,7 @@ protected:
     ros::Subscriber progress_dock_sub;
     ros::Subscriber elevator_request_sub;
     ros::Publisher elevator_request_reply_pub;
+    ros::Publisher remote_command_pub;
 
     // remote monitoring
     ros::Subscriber experiment_transition_sub;
@@ -68,6 +69,7 @@ protected:
     virtual void publishTaskMessage(const ropod_ros_msgs::Task& task_msg);
     void parseAndPublishElevatorReply(const Json::Value &root);
     void parseAndPublishExperimentMessage(const Json::Value &root);
+    void parseAndPublishCommandMessage(const Json::Value &root);
 
     void setupTaskPublisher();
     void setupGotoSubscriber();
