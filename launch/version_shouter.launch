@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="config_filename" value=".rosinstall"/>
+  <arg name="workspace" value='/home/argen/projects/work/ropod/ropod_ws/src/'/>
+  <arg name="ropod_id" default="ropod_003"/>
+
+  <node name="robot_version_publisher" pkg="robot_version_shouter" type="robot_version_shouter.py" output="screen" args="$(arg workspace) $(arg config_filename)">
+    <env name="ROPOD_ID" value="$(arg ropod_id)"/>
+  </node>
+</launch>

@@ -117,3 +117,13 @@ add_executable(ropod_com_mediator
 
 add_dependencies(ropod_com_mediator ropod_ros_msgs_generate_messages_cpp)
 target_link_libraries(ropod_com_mediator ${LIBS} ${catkin_LIBRARIES} ${FTSM_LIBRARIES})
+
+install(PROGRAMS
+  scripts/robot_version_shouter.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+install(FILES
+    launch/version_shouter.launch
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+)
