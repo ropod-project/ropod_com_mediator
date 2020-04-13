@@ -239,8 +239,11 @@ void ComMediator::progressGOTOCallback(const ropod_ros_msgs::TaskProgressGOTO::C
     msg["payload"]["taskStatus"] = ros_msg->task_status.status_code;
     msg["payload"]["taskProgress"]["actionId"] = ros_msg->action_id;
     msg["payload"]["taskProgress"]["actionType"] = ros_msg->action_type;
-    msg["payload"]["taskProgress"]["actionStatus"]["domain"] = ros_msg->status.domain;
-    msg["payload"]["taskProgress"]["actionStatus"]["module"] = ros_msg->status.module_code;
+    // The FMS will receive action codes with a domain code 3 (Robot), 
+    // and a module code 7 (Task executor) and only generic status codes 
+    // (i.e. no internal action transitions or successes)
+    msg["payload"]["taskProgress"]["actionStatus"]["domain"] = ropod_ros_msgs::Status::ROBOT;
+    msg["payload"]["taskProgress"]["actionStatus"]["module"] = ropod_ros_msgs::Status::TASK_EXECUTOR;
     msg["payload"]["taskProgress"]["actionStatus"]["status"] = ros_msg->status.status_code;
     msg["payload"]["taskProgress"]["area"] = ros_msg->area_name;
 
@@ -271,8 +274,8 @@ void ComMediator::progressDOCKCallback(const ropod_ros_msgs::TaskProgressDOCK::C
     msg["payload"]["taskStatus"] = ros_msg->task_status.status_code;
     msg["payload"]["taskProgress"]["actionId"] = ros_msg->action_id;
     msg["payload"]["taskProgress"]["actionType"] = ros_msg->action_type;
-    msg["payload"]["taskProgress"]["actionStatus"]["domain"] = ros_msg->status.domain;
-    msg["payload"]["taskProgress"]["actionStatus"]["module"] = ros_msg->status.module_code;
+    msg["payload"]["taskProgress"]["actionStatus"]["domain"] = ropod_ros_msgs::Status::ROBOT;
+    msg["payload"]["taskProgress"]["actionStatus"]["module"] = ropod_ros_msgs::Status::TASK_EXECUTOR;
     msg["payload"]["taskProgress"]["actionStatus"]["status"] = ros_msg->status.status_code;
     msg["payload"]["taskProgress"]["area"] = ros_msg->area_name;
 
