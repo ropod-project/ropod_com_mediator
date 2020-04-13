@@ -7,7 +7,7 @@
 class ComMediatorSim : public ComMediator
 {
 protected:
-    virtual void publishTaskMessage(const ropod_ros_msgs::Task& task_msg);
+    //virtual void publishTaskMessage(const ropod_ros_msgs::Task& task_msg);
 
 public:
     ComMediatorSim(int argc, char**argv, const std::string& robot_name);

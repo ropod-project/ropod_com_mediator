@@ -39,9 +39,9 @@ void ComMediatorSim::setupRos()
 
     setupTaskPublisher();
     setupGotoSubscriber();
+    setupDockSubscriber();
 
     /** Disable for simulations */
-    // setupDockSubscriber();
     // setupElevatorRequestPubSub();
     // setupRobotPoseSubscriber();
     // setupRobotSubareaSubscriber();
@@ -72,25 +72,25 @@ void ComMediatorSim::tearDownRos()
 // Zyre to ROS methods
 ///////////////////////
 
-void ComMediatorSim::publishTaskMessage(const ropod_ros_msgs::Task& task_msg)
-{
-    if (!task_msg.robot_actions.empty())
-    {
-        ROS_INFO("[ComMediator] Filtering out all actions other than GOTO before publishing the task to task executor!");
-        ropod_ros_msgs::Task msg_copy = task_msg;
-        for (auto itr = msg_copy.robot_actions.begin(); itr != msg_copy.robot_actions.end(); )
-        {
-            if (itr->type != "GOTO")
-            {
-                ROS_INFO("\t[ComMediator] Removed Action (%s) of type (%s)", itr->action_id.c_str(), itr->type.c_str());
-                itr = msg_copy.robot_actions.erase(itr);
-            }
-            else
-                ++itr;
-        }
-        ComMediator::publishTaskMessage(msg_copy);
-    }
-}
+// void ComMediatorSim::publishTaskMessage(const ropod_ros_msgs::Task& task_msg)
+// {
+//     if (!task_msg.robot_actions.empty())
+//     {
+//         ROS_INFO("[ComMediator] Filtering out all actions other than GOTO before publishing the task to task executor!");
+//         ropod_ros_msgs::Task msg_copy = task_msg;
+//         for (auto itr = msg_copy.robot_actions.begin(); itr != msg_copy.robot_actions.end(); )
+//         {
+//             if (itr->type != "GOTO")
+//             {
+//                 ROS_INFO("\t[ComMediator] Removed Action (%s) of type (%s)", itr->action_id.c_str(), itr->type.c_str());
+//                 itr = msg_copy.robot_actions.erase(itr);
+//             }
+//             else
+//                 ++itr;
+//         }
+//         ComMediator::publishTaskMessage(msg_copy);
+//     }
+// }
 
 int main(int argc, char **argv)
 {
