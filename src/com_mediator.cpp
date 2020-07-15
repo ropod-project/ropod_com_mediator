@@ -276,6 +276,8 @@ void ComMediator::progressGOTOCallback(const ropod_ros_msgs::TaskProgressGOTO::C
     msg["payload"]["taskProgress"]["actionStatus"]["status"] = ros_msg->status.status_code;
     msg["payload"]["taskProgress"]["area"] = ros_msg->area_name;
 
+    ROS_INFO("Sending task-progress msg to ROPOD group");
+
     std::stringstream feedbackMsg("");
     feedbackMsg << msg;
     this->shout(feedbackMsg.str(), "ROPOD");
