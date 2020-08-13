@@ -61,13 +61,18 @@ private:
     Json::CharReaderBuilder json_builder;
 
     std::string robotName;
-    std::string zyreGroupName;
+    std::vector<std::string> zyreGroupName;
     std::string robotSubAreaName;
 
     void parseAndPublishTaskMessage(const Json::Value &root);
     void parseAndPublishElevatorReply(const Json::Value &root);
     void parseAndPublishExperimentMessage(const Json::Value &root);
     void parseAndPublishCommandMessage(const Json::Value &root);
+
+    void sendRobotPoseMsg();
+
+    void processTaskMessage(const Json::Value &root, std::string ZyreGroupName);
+    void processDGraphUpdateMessage(const Json::Value &root, std::string ZyreGroupName);
 
 public:
     ComMediator(int argc, char**argv);

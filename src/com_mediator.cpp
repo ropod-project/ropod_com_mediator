@@ -132,7 +132,7 @@ void ComMediator::setupRos()
     {
         nh->param<std::string>("robotName", robotName, "ropod_1");
     }
-    nh->param<std::string>("zyreGroupName", zyreGroupName, "ROPOD");
+    nh->param("zyreGroupName", zyreGroupName, std::vector<std::string>({"ROPOD","TASK-ALLOCATION", "SCHEDULE-MONITOR"}));
     double loop_rate;
     nh->param<double>("loop_rate", loop_rate, 10.0);
     rate.reset(new ros::Rate(loop_rate));
@@ -191,7 +191,7 @@ void ComMediator::recvMsgCallback(ZyreMsgContent *msgContent)
         {
             if (root["header"]["type"] == "TASK")
             {
-                this->parseAndPublishTaskMessage(root);
+                this->processTaskMessage(root, msgContent->group);
             }
             else if (root["header"]["type"] == "ROBOT-ELEVATOR-CALL-REPLY")
             {
@@ -205,8 +205,40 @@ void ComMediator::recvMsgCallback(ZyreMsgContent *msgContent)
             {
                 this->parseAndPublishCommandMessage(root);
             }
+            else if (root["header"]["type"] == "D-GRAPH-UPDATE")
+            {
+                this->processDGraphUpdateMessage(root, msgContent->group);
+            }
         }
     }
+}
+
+void ComMediator::processTaskMessage(const Json::Value &root, std::string ZyreGroupName){
+    if (ZyreGroupName == "TASK-ALLOCATION")
+    {
+        ROS_INFO("Received dispatched task");
+        std::stringstream zyreMsg("");
+        zyreMsg << root;
+        ROS_INFO("Sending msg to schedule-monitor");
+        this->shout(zyreMsg.str(), "SCHEDULE-MONITOR");
+    }
+    else if (ZyreGroupName == "ROPOD")
+    {
+        ROS_INFO("Received scheduled task");
+        this->parseAndPublishTaskMessage(root);
+    }
+}
+
+void ComMediator::processDGraphUpdateMessage(const Json::Value &root, std::string ZyreGroupName){
+    if (ZyreGroupName == "TASK-ALLOCATION")
+    {
+        ROS_INFO("Received d-graph-update msg");
+        std::stringstream zyreMsg("");
+        zyreMsg << root;
+        ROS_INFO("Sending d-graph-update msg to schedule-monitor");
+        this->shout(zyreMsg.str(), "SCHEDULE-MONITOR");
+    }
+
 }
 
 void ComMediator::sendMessageStatus(const std::string &msgId, bool status)
@@ -244,9 +276,11 @@ void ComMediator::progressGOTOCallback(const ropod_ros_msgs::TaskProgressGOTO::C
     msg["payload"]["taskProgress"]["actionStatus"]["status"] = ros_msg->status.status_code;
     msg["payload"]["taskProgress"]["area"] = ros_msg->area_name;
 
+    ROS_INFO("Sending task-progress msg to ROPOD group");
+
     std::stringstream feedbackMsg("");
     feedbackMsg << msg;
-    this->shout(feedbackMsg.str(), zyreGroupName);
+    this->shout(feedbackMsg.str(), "ROPOD");
 }
 
 void ComMediator::progressDOCKCallback(const ropod_ros_msgs::TaskProgressDOCK::ConstPtr &ros_msg)
@@ -278,7 +312,7 @@ void ComMediator::progressDOCKCallback(const ropod_ros_msgs::TaskProgressDOCK::C
 
     std::stringstream feedbackMsg("");
     feedbackMsg << msg;
-    this->shout(feedbackMsg.str(), zyreGroupName);
+    this->shout(feedbackMsg.str(), "ROPOD");
 }
 
 void ComMediator::elevatorRequestCallback(const ropod_ros_msgs::ElevatorRequest::ConstPtr &ros_msg)
@@ -367,10 +401,38 @@ void ComMediator::robotPoseCallback(const geometry_msgs::PoseStamped::ConstPtr &
     this->shout(poseMsg.str());
 }
 
+void ComMediator::sendRobotPoseMsg()
+{
+    // Sends only subarea info, pose values are hardcoded.
+    Json::Value msg;
+    msg["header"]["type"] = "ROBOT-POSE";
+    msg["header"]["metamodel"] = "ropod-msg-schema.json";
+    msg["header"]["msgId"] = this->generateUUID();
+
+    char *timestr = zclock_timestr (); // TODO: this is not ISO 8601
+    msg["header"]["timestamp"] = timestr;
+    zstr_free(&timestr);
+
+    msg["payload"]["metamodel"] = "ropod-demo-robot-pose-2d-schema.json";
+    msg["payload"]["robotId"] = robotName;
+    msg["payload"]["subarea"] = robotSubAreaName;
+    msg["payload"]["pose"]["referenceId"] = "";
+    msg["payload"]["pose"]["x"] = 58.1;
+    msg["payload"]["pose"]["y"] = 100.2,
+    msg["payload"]["pose"]["theta"] = 1.3;
+
+    std::stringstream poseMsg("");
+    poseMsg << msg;
+    this->shout(poseMsg.str(), "ROPOD");
+
+}
+
 void ComMediator::robotSubAreaCallback(const std_msgs::String::ConstPtr &subarea_msg)
 {
     // Update the robot subarea
     robotSubAreaName = subarea_msg->data;
+    ROS_INFO_STREAM("Received subarea msg " << robotSubAreaName);
+    this->sendRobotPoseMsg();
 }
 
 void ComMediator::experimentFeedbackCallback(const ropod_ros_msgs::ExecuteExperimentFeedbackConstPtr &ros_msg)
@@ -388,7 +450,7 @@ void ComMediator::experimentFeedbackCallback(const ropod_ros_msgs::ExecuteExperi
 
     std::stringstream jsonMsg("");
     jsonMsg << msg;
-    this->shout(jsonMsg.str(), zyreGroupName);
+    this->shout(jsonMsg.str(), "ROPOD");
 }
 
 void ComMediator::experimentResultCallback(const actionlib::SimpleClientGoalState& state,
@@ -412,7 +474,7 @@ void ComMediator::experimentResultCallback(const actionlib::SimpleClientGoalStat
 
     std::stringstream jsonMsg("");
     jsonMsg << msg;
-    this->shout(jsonMsg.str(), zyreGroupName);
+    this->shout(jsonMsg.str(), "ROPOD");
 }
 
 void ComMediator::experimentTransitionCallback(const ropod_ros_msgs::TransitionList::ConstPtr &ros_msg)
@@ -437,7 +499,7 @@ void ComMediator::experimentTransitionCallback(const ropod_ros_msgs::TransitionL
 
     std::stringstream jsonMsg("");
     jsonMsg << msg;
-    this->shout(jsonMsg.str(), zyreGroupName);
+    this->shout(jsonMsg.str(), "ROPOD");
 }
 
 ///////////////////////
@@ -490,7 +552,7 @@ void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
         ropod_ros_msgs::Action action;
         action.action_id = action_list[i]["_id"].asString();
         action.type = action_list[i]["type"].asString();
-        if (action.type == "GOTO" || action.type == "DOCK" || action.type == "UNDOCK")
+        if (action.type == "GO_TO" || action.type == "DOCK" || action.type == "UNDOCK")
         {
             // TODO: Is this still needed?
             // action.execution_status = action_list[i]["execution_status"].asString();
