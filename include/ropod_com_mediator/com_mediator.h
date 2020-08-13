@@ -69,6 +69,8 @@ private:
     void parseAndPublishExperimentMessage(const Json::Value &root);
     void parseAndPublishCommandMessage(const Json::Value &root);
 
+    void sendRobotPoseMsg();
+
     void processTaskMessage(const Json::Value &root, std::string ZyreGroupName);
     void processDGraphUpdateMessage(const Json::Value &root, std::string ZyreGroupName);
 

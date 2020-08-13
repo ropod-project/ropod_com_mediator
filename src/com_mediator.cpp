@@ -401,10 +401,38 @@ void ComMediator::robotPoseCallback(const geometry_msgs::PoseStamped::ConstPtr &
     this->shout(poseMsg.str());
 }
 
+void ComMediator::sendRobotPoseMsg()
+{
+    // Sends only subarea info, pose values are hardcoded.
+    Json::Value msg;
+    msg["header"]["type"] = "ROBOT-POSE";
+    msg["header"]["metamodel"] = "ropod-msg-schema.json";
+    msg["header"]["msgId"] = this->generateUUID();
+
+    char *timestr = zclock_timestr (); // TODO: this is not ISO 8601
+    msg["header"]["timestamp"] = timestr;
+    zstr_free(&timestr);
+
+    msg["payload"]["metamodel"] = "ropod-demo-robot-pose-2d-schema.json";
+    msg["payload"]["robotId"] = robotName;
+    msg["payload"]["subarea"] = robotSubAreaName;
+    msg["payload"]["pose"]["referenceId"] = "";
+    msg["payload"]["pose"]["x"] = 58.1;
+    msg["payload"]["pose"]["y"] = 100.2,
+    msg["payload"]["pose"]["theta"] = 1.3;
+
+    std::stringstream poseMsg("");
+    poseMsg << msg;
+    this->shout(poseMsg.str(), "ROPOD");
+
+}
+
 void ComMediator::robotSubAreaCallback(const std_msgs::String::ConstPtr &subarea_msg)
 {
     // Update the robot subarea
     robotSubAreaName = subarea_msg->data;
+    ROS_INFO_STREAM("Received subarea msg " << robotSubAreaName);
+    this->sendRobotPoseMsg();
 }
 
 void ComMediator::experimentFeedbackCallback(const ropod_ros_msgs::ExecuteExperimentFeedbackConstPtr &ros_msg)
@@ -524,7 +552,7 @@ void ComMediator::parseAndPublishTaskMessage(const Json::Value &root)
         ropod_ros_msgs::Action action;
         action.action_id = action_list[i]["_id"].asString();
         action.type = action_list[i]["type"].asString();
-        if (action.type == "GOTO" || action.type == "DOCK" || action.type == "UNDOCK")
+        if (action.type == "GO_TO" || action.type == "DOCK" || action.type == "UNDOCK")
         {
             // TODO: Is this still needed?
             // action.execution_status = action_list[i]["execution_status"].asString();
