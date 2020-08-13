@@ -1,4 +1,4 @@
-FROM git.ropod.org:4567/ropod/ropod_common:latest
+FROM ropod/ropod_common:latest
 
 ## Install MongoCXX driver, mongocxx and ftsm
 WORKDIR /workspace

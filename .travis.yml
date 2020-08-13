@@ -1,0 +1,29 @@
+sudo: required
+
+services:
+  - docker
+
+language: cpp
+
+env:
+  global:
+    - CONTAINER_RELEASE_IMAGE: ropod/ropod-com-mediator:$TRAVIS_BRANCH
+
+stages:
+  - build
+  - name: release
+    if: (branch IN (master, feature-travis) AND type != "pull_request") OR tag = true
+
+jobs:
+  include:
+    - stage: build
+      script:
+        - docker build -t $CONTAINER_RELEASE_IMAGE .
+    - stage: release
+      name: "Docker Hub"
+      skip_cleanup: true
+      script:
+        - docker build -t $CONTAINER_RELEASE_IMAGE .
+        - docker images
+        - docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+        - travis_wait docker push $CONTAINER_RELEASE_IMAGE
